@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+.env
+.env.local
+.venv
+venv/
+ENV/
+
+# Node & Next.js
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+out/
+frontend/out/
+.vercel/
+frontend/.vercel/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Storage uploads (keep structure, ignore binary uploads)
+storage/documents/*
+!storage/documents/.gitkeep
+
+# IDEs & System
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Gemini / Scratch
+.gemini/
+scratch/
+
+# Scratch & Reference PDFs
+poly/
+dbms project/
+*.pdf
+!storage/documents/*
