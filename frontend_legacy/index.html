@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KnowledgeSphere AI - Enterprise Knowledge Intelligence Platform</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon">KS</div>
+                <div class="logo-text">
+                    <h2>KnowledgeSphere</h2>
+                    <span class="badge ai-badge">AI Enterprise</span>
+                </div>
+            </div>
+
+            <div class="user-card" id="userCard">
+                <div class="user-avatar" id="userAvatar">?</div>
+                <div class="user-info">
+                    <div class="user-name" id="userName">Not Logged In</div>
+                    <div class="user-role-badge" id="userRoleBadge">Guest</div>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-tab="tab-documents">
+                    <span class="icon">📁</span> Documents & Ingestion
+                </button>
+                <button class="nav-item" data-tab="tab-search">
+                    <span class="icon">🔍</span> Hybrid Vector Search
+                </button>
+                <button class="nav-item" data-tab="tab-rag">
+                    <span class="icon">🤖</span> Grounded RAG Copilot
+                </button>
+                <button class="nav-item" data-tab="tab-text2sql">
+                    <span class="icon">⚡</span> Safe Text-to-SQL
+                </button>
+                <button class="nav-item" data-tab="tab-graph">
+                    <span class="icon">🕸️</span> Knowledge Graph
+                </button>
+                <button class="nav-item" data-tab="tab-nosql">
+                    <span class="icon">🍃</span> MongoDB Telemetry
+                </button>
+                <button class="nav-item" data-tab="tab-audit">
+                    <span class="icon">🛡️</span> Security & Audit
+                </button>
+            </nav>
+
+            <div class="quick-login-section">
+                <h4>Quick Demo Switcher</h4>
+                <div class="quick-btns">
+                    <button class="btn-demo btn-admin" onclick="quickLogin('alice.admin@knowledgesphere.ai', 'Admin')">👑 Admin (Alice)</button>
+                    <button class="btn-demo btn-manager" onclick="quickLogin('bob.hr@knowledgesphere.ai', 'Manager')">💼 HR Manager (Bob)</button>
+                    <button class="btn-demo btn-employee" onclick="quickLogin('diana.eng@knowledgesphere.ai', 'Employee')">💻 Eng Dev (Diana)</button>
+                    <button class="btn-demo btn-restricted" onclick="quickLogin('hannah.hr@knowledgesphere.ai', 'Employee')">🔒 HR Restricted (Hannah)</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="page-title" id="pageTitle">Enterprise Documents</div>
+                <div class="topbar-actions">
+                    <span class="system-status"><span class="status-dot"></span> PostgreSQL & MongoDB Active</span>
+                    <button class="btn btn-outline" id="btnLoginToggle" onclick="openLoginModal()">Switch Account</button>
+                </div>
+            </header>
+
+            <div class="content-body">
+                <!-- TAB 1: DOCUMENTS -->
+                <section class="tab-pane active" id="tab-documents">
+                    <div class="action-bar">
+                        <div class="search-box">
+                            <input type="text" id="docFilterInput" placeholder="Filter documents by title..." onkeyup="filterDocumentsTable()">
+                        </div>
+                        <button class="btn btn-primary" onclick="openUploadModal()">+ Upload Document</button>
+                    </div>
+
+                    <div class="rbac-notice" id="docRbacNotice">
+                        Logged in as: <strong>Admin</strong>. You have visibility into all 10 enterprise documents.
+                    </div>
+
+                    <div class="card table-card">
+                        <table class="data-table" id="documentsTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Department</th>
+                                    <th>Category</th>
+                                    <th>Version</th>
+                                    <th>Tags</th>
+                                    <th>Permissions</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="documentsTableBody">
+                                <tr><td colspan="8" class="text-center">Loading documents...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- TAB 2: SEARCH -->
+                <section class="tab-pane" id="tab-search">
+                    <div class="card">
+                        <h3>Hybrid Retrieval & Intent Router</h3>
+                        <p class="subtitle">Combines dense cosine similarity vectors with structured SQL filtering using Reciprocal Rank Fusion (RRF).</p>
+                        
+                        <div class="search-form">
+                            <input type="text" id="searchQueryInput" placeholder="e.g. employee leave policy, AWS infrastructure budget, PostgreSQL tuning..." value="What is our employee leave policy?">
+                            <button class="btn btn-primary" onclick="runSearch()">Execute Search</button>
+                        </div>
+
+                        <div class="router-badge-container" id="searchRouterBadge">
+                            <span class="badge" id="routeIntentBadge">ROUTE: READY</span>
+                            <span class="text-muted" id="routeExplanation">Enter a query to inspect intent routing.</span>
+                        </div>
+                    </div>
+
+                    <div class="search-results-container" id="searchResultsContainer"></div>
+                </section>
+
+                <!-- TAB 3: RAG COPILOT -->
+                <section class="tab-pane" id="tab-rag">
+                    <div class="card">
+                        <h3>Grounded RAG Assistant (Role-Aware Pre-Retrieval Filtering)</h3>
+                        <p class="subtitle">Ask natural-language questions. Unauthorized documents are isolated <strong>before</strong> retrieval so they never enter the LLM context.</p>
+
+                        <div class="search-form">
+                            <input type="text" id="ragQuestionInput" placeholder="Ask anything about policies, architecture, or budgets..." value="What does our employee leave policy say?">
+                            <button class="btn btn-primary" onclick="runRAG()">Ask KnowledgeSphere</button>
+                        </div>
+
+                        <div class="preset-chips">
+                            <span>Presets:</span>
+                            <button class="chip" onclick="setRAGQuery('What does our employee leave policy say?')">Employee Leave</button>
+                            <button class="chip" onclick="setRAGQuery('What is the Q1 2026 budget projection?')">Q1 Budget</button>
+                            <button class="chip" onclick="setRAGQuery('Explain the System Architecture Blueprint and cloud microservices')">System Architecture (Restricted)</button>
+                            <button class="chip" onclick="setRAGQuery('What are the PostgreSQL database optimization tips?')">Database Tuning</button>
+                        </div>
+                    </div>
+
+                    <div id="ragResponseContainer"></div>
+                </section>
+
+                <!-- TAB 4: TEXT-TO-SQL -->
+                <section class="tab-pane" id="tab-text2sql">
+                    <div class="card">
+                        <h3>Safe Text-to-SQL Analytics Terminal</h3>
+                        <p class="subtitle">Transforms business questions to PostgreSQL SELECT queries with strict AST whitelisting and injection protection.</p>
+
+                        <div class="search-form">
+                            <input type="text" id="sqlNaturalInput" placeholder="e.g. How many documents in each department? Most active users?" value="How many documents are in each department?">
+                            <button class="btn btn-primary" onclick="runText2SQL()">Translate & Execute</button>
+                        </div>
+
+                        <div class="preset-chips">
+                            <span>Presets:</span>
+                            <button class="chip" onclick="setSQLQuery('How many documents are in each department?')">Docs by Dept</button>
+                            <button class="chip" onclick="setSQLQuery('Show all users and their departments')">Users & Depts</button>
+                            <button class="chip" onclick="setSQLQuery('Who are the most active users?')">Audit Activity</button>
+                            <button class="chip chip-danger" onclick="setSQLQuery('DROP TABLE users;')">⚠️ Test Injection (DROP)</button>
+                        </div>
+                    </div>
+
+                    <div id="sqlResultContainer"></div>
+                </section>
+
+                <!-- TAB 5: KNOWLEDGE GRAPH -->
+                <section class="tab-pane" id="tab-graph">
+                    <div class="card">
+                        <h3>Entity-Relationship Knowledge Graph</h3>
+                        <p class="subtitle">PostgreSQL relational graph modeling entities (PERSON, DEPARTMENT, DOCUMENT, TECHNOLOGY) and edges (OWNS, WORKS_IN, EXTENDS).</p>
+                        <div class="graph-search">
+                            <input type="text" id="graphSearchInput" placeholder="Search entity connections (e.g. Alice, Diana, Engineering, PostgreSQL)..." value="Alice">
+                            <button class="btn btn-secondary" onclick="searchEntityConnections()">Inspect Connections</button>
+                            <button class="btn btn-outline" onclick="loadFullGraph()">Refresh Full Graph</button>
+                        </div>
+                    </div>
+
+                    <div class="card" id="graphContainer">
+                        <div id="graphStats" class="graph-stats">Loading graph data...</div>
+                        <div id="graphVisualization" class="graph-vis-grid"></div>
+                    </div>
+                </section>
+
+                <!-- TAB 6: NOSQL TELEMETRY -->
+                <section class="tab-pane" id="tab-nosql">
+                    <div class="card">
+                        <h3>MongoDB Polyglot Persistence & Telemetry</h3>
+                        <p class="subtitle">MongoDB aggregation pipelines for high-velocity user activity logs, document reviews, and rating metrics.</p>
+                        <div class="telemetry-grid" id="telemetryGrid">Loading telemetry...</div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Submit Document Review (MongoDB)</h3>
+                        <div class="review-form">
+                            <select id="reviewDocSelect"></select>
+                            <select id="reviewRatingSelect">
+                                <option value="5">⭐⭐⭐⭐⭐ (5 - Outstanding)</option>
+                                <option value="4">⭐⭐⭐⭐ (4 - Very Good)</option>
+                                <option value="3">⭐⭐⭐ (3 - Average)</option>
+                                <option value="2">⭐⭐ (2 - Needs Improvement)</option>
+                                <option value="1">⭐ (1 - Inadequate)</option>
+                            </select>
+                            <input type="text" id="reviewTextInput" placeholder="Write feedback or review...">
+                            <button class="btn btn-primary" onclick="submitReview()">Save to MongoDB</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 7: AUDIT & COMPLIANCE -->
+                <section class="tab-pane" id="tab-audit">
+                    <div class="card">
+                        <h3>Security Audit Trail & SQL Window Functions</h3>
+                        <p class="subtitle">Immutable audit trail stored in PostgreSQL, with LEAD/LAG and ROW_NUMBER window analytics.</p>
+                        <button class="btn btn-secondary" onclick="loadAuditLogs()">Refresh Audit Logs</button>
+                        <button class="btn btn-outline" onclick="loadAuditAnalytics()">Run Window Analytics View</button>
+                    </div>
+
+                    <div class="card table-card" id="auditContainer">
+                        <table class="data-table" id="auditTable">
+                            <thead>
+                                <tr>
+                                    <th>Log ID</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Document</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditTableBody">
+                                <tr><td colspan="5" class="text-center">Click Refresh to view audit logs...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Upload Document Modal -->
+    <div class="modal-overlay" id="uploadModal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>Upload New Enterprise Document</h3>
+                <button class="close-btn" onclick="closeUploadModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadDocForm" onsubmit="handleDocumentUpload(event)">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" id="upTitle" required placeholder="e.g. Cloud Security Standard 2026">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="upDescription" rows="2" placeholder="Brief summary of document..."></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Department</label>
+                            <select id="upDept" required>
+                                <option value="1">Human Resources</option>
+                                <option value="2">Finance</option>
+                                <option value="3" selected>Engineering</option>
+                                <option value="4">Marketing</option>
+                                <option value="5">Legal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="upCat" required>
+                                <option value="1">HR Policies</option>
+                                <option value="2">Financial Reports</option>
+                                <option value="3" selected>Technical Documentation</option>
+                                <option value="4">Legal Contracts</option>
+                                <option value="5">Marketing Strategy</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Tags (Comma separated)</label>
+                        <input type="text" id="upTags" placeholder="Security, AWS, Architecture">
+                    </div>
+                    <div class="form-group">
+                        <label>File Upload (.txt, .md, .pdf, .docx)</label>
+                        <input type="file" id="upFile">
+                    </div>
+                    <div class="form-group">
+                        <label>Or Direct Text Content</label>
+                        <textarea id="upContent" rows="4" placeholder="Type or paste document text here..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Index & Upload Document</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
