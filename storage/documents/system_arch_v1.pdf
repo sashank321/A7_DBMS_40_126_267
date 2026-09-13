@@ -1,0 +1,5 @@
+# System Architecture Blueprint
+KnowledgeSphere AI employs a decoupled microservices architecture with a PostgreSQL relational core and pgvector extension for high-dimensional embeddings.
+Unstructured telemetry, user activity feeds, and document review comments are persisted in MongoDB NoSQL collections.
+The FastAPI backend coordinates safe Text-to-SQL generation, Reciprocal Rank Fusion (RRF) hybrid retrieval, and knowledge graph traversal.
+Authentication utilizes stateless JWT tokens with role-based access control (RBAC). Architecture designed by Alice Smith.

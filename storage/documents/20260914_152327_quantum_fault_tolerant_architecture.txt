@@ -1,0 +1,1 @@
+Quantum computing architectures require continuous syndrome measurements to suppress environmental decoherence. Surface codes provide fault tolerance by encoding logical qubits into a lattice of physical superconducting qubits.
