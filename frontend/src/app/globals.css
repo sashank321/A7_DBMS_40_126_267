@@ -1,0 +1,373 @@
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Inter:wght@300;400;500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,300..800;1,8..60,300..800&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=VT323&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-beige-bg: #f4f1e6;
+  --color-beige-light: #f0ede0;
+  --color-beige-main: #e0dccf;
+  --color-beige-dark: #c4c0b3;
+  --color-beige-shadow: #a09c8f;
+  --color-screen-black: #222529;
+  --color-ink-black: #0f0f0f;
+  --color-accent-orange: #e57d25;
+  --color-accent-blue: #0254ec;
+  --color-muted: #8a8a8a;
+  --color-divider: rgba(0, 0, 0, 0.12);
+
+  --font-heading: 'EB Garamond', Georgia, serif;
+  --font-body: 'Source Serif 4', 'Source Serif Pro', Georgia, serif;
+  --font-space: 'Space Mono', monospace;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'VT323', monospace;
+}
+
+body {
+  background-color: var(--color-beige-bg, #f4f1e6);
+  color: var(--color-ink-black, #0f0f0f);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Nav Logo Exact Size Fix */
+.site-header-logo img,
+header .site-header-logo img,
+a.site-header-logo img {
+  height: 32px !important;
+  width: auto !important;
+  max-width: none !important;
+  display: block;
+}
+
+/* Footer Logo Exact Size Fix */
+footer img[alt="BrowserOS logo"] {
+  max-width: 180px !important;
+  height: auto !important;
+}
+
+/* Typography Family Overrides */
+h1, h2, h3, .font-heading {
+  font-family: var(--font-heading) !important;
+}
+
+.font-body {
+  font-family: var(--font-body) !important;
+}
+
+/* 3D Scene and Computer Unit Scaling */
+.scene {
+  transform: scale(0.85) !important;
+  transform-origin: center center !important;
+}
+
+@media (max-width: 1200px) {
+  .scene {
+    transform: scale(0.78) !important;
+  }
+}
+
+.font-space {
+  font-family: var(--font-space) !important;
+}
+
+.font-sans {
+  font-family: var(--font-sans) !important;
+}
+
+.font-mono {
+  font-family: var(--font-mono) !important;
+}
+
+/* Color Classes */
+.text-beige-bg {
+  color: var(--color-beige-bg, #f4f1e6) !important;
+}
+.bg-beige-bg {
+  background-color: var(--color-beige-bg, #f4f1e6) !important;
+}
+.text-ink-black {
+  color: var(--color-ink-black, #0f0f0f) !important;
+}
+.bg-ink-black {
+  background-color: var(--color-ink-black, #0f0f0f) !important;
+}
+.text-accent-orange {
+  color: var(--color-accent-orange, #e57d25) !important;
+}
+.bg-accent-orange {
+  background-color: var(--color-accent-orange, #e57d25) !important;
+}
+.text-accent-blue {
+  color: var(--color-accent-blue, #0254ec) !important;
+}
+.bg-accent-blue {
+  background-color: var(--color-accent-blue, #0254ec) !important;
+}
+.text-muted {
+  color: var(--color-muted, #8a8a8a) !important;
+}
+.bg-muted {
+  background-color: var(--color-muted, #8a8a8a) !important;
+}
+.border-divider {
+  border-color: var(--color-divider, rgba(0,0,0,0.12)) !important;
+}
+
+/* Sticky notes colors */
+.bg-sage-note {
+  background-color: #C5CEBD !important;
+}
+.bg-ochre-note {
+  background-color: #DBC9A0 !important;
+}
+.bg-plum-note {
+  background-color: #C4B5C8 !important;
+}
+.bg-cream-note {
+  background-color: #E0DCCF !important;
+}
+
+/* Tracking / Letter-spacing fixes */
+.tracking-\[-2px\],
+[class*="tracking-[-2px]"] {
+  letter-spacing: -0.02em !important;
+}
+.tracking-\[-0\.3px\],
+[class*="tracking-[-0.3px]"] {
+  letter-spacing: -0.01em !important;
+}
+.tracking-\[-0\.03em\],
+[class*="tracking-[-0.03em]"] {
+  letter-spacing: -0.03em !important;
+}
+
+/* 3D Computer Side-by-Side Placement */
+@media (min-width: 768px) {
+  .hero-main-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1.15fr !important;
+  }
+  .product-col {
+    display: flex !important;
+  }
+}
+
+/* Section Headings Exact Typography */
+#features header .flex.flex-col {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: flex-end !important;
+}
+
+#features header h2 {
+  font-size: clamp(2.5rem, 6vw, 5.25rem) !important;
+  line-height: 0.92 !important;
+  letter-spacing: -0.03em !important;
+  font-weight: 300 !important;
+  text-align: left !important;
+  margin: 0 !important;
+}
+
+#features header p {
+  text-align: right !important;
+  font-family: var(--font-space) !important;
+  color: #666666 !important;
+  max-width: 24rem !important;
+}
+
+#use-cases h2 {
+  font-size: clamp(2.25rem, 4.5vw, 3.25rem) !important;
+  line-height: 0.95 !important;
+  letter-spacing: -0.02em !important;
+  color: #ffffff !important;
+  font-family: var(--font-heading) !important;
+}
+
+#use-cases p {
+  font-size: 1.125rem !important;
+  color: #888888 !important;
+}
+
+#faq h2 {
+  font-size: clamp(2.25rem, 4.5vw, 3.25rem) !important;
+  line-height: 0.95 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--color-beige-bg, #f4f1e6) !important;
+  font-family: var(--font-heading) !important;
+}
+
+#faq p {
+  font-size: 1.125rem !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+#faq button {
+  padding: 1.5rem 0 !important;
+}
+
+#faq button h3 {
+  font-size: 1.35rem !important;
+  font-family: var(--font-heading) !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--color-beige-bg, #f4f1e6) !important;
+}
+
+#faq .faq-answer {
+  font-size: 15px !important;
+  line-height: 1.65 !important;
+  font-family: var(--font-body) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+#faq .faq-answer a {
+  color: rgba(255, 255, 255, 0.8) !important;
+  text-decoration: underline !important;
+}
+
+#faq .faq-answer a:hover {
+  color: #ffffff !important;
+}
+
+/* Bento Card Hover Animations */
+.feature-card-animated {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.feature-card-animated .canvas-overlay {
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.4s ease;
+}
+
+.feature-card-animated:hover .canvas-overlay {
+  opacity: 1 !important;
+}
+
+.feature-card-animated .play-indicator {
+  z-index: 10;
+  opacity: 0;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 10px;
+  position: absolute;
+  top: 30px;
+  right: 30px;
+  transform: translateY(6px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.feature-card-animated:hover .play-indicator {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+.feature-card-animated .play-indicator-circle {
+  background: #0f0f0f;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card-animated:hover .play-indicator-circle {
+  transform: scale(1.08);
+  box-shadow: 0 4px 20px rgba(15, 15, 15, 0.3);
+}
+
+.feature-card-animated .play-label {
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #0f0f0f;
+  background: rgba(244, 241, 230, 0.9);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: var(--font-space);
+  font-size: 11px;
+}
+
+.feature-card-animated .play-indicator svg {
+  fill: #f4f1e6;
+  width: 12px;
+  height: 12px;
+}
+
+/* Breakpoint display overrides */
+@media (min-width: 1024px) {
+  .lg\:block {
+    display: block !important;
+  }
+  .lg\:hidden {
+    display: none !important;
+  }
+  .lg\:grid {
+    display: grid !important;
+  }
+  .lg\:flex {
+    display: flex !important;
+  }
+}
+
+/* Customizations for Readability and Styling */
+
+/* Hide side scrollbar */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Transparent Scrolling Nav */
+.site-header {
+  background-color: rgba(244, 241, 230, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border-bottom: 1px solid rgba(0,0,0,0.03) !important;
+}
+
+
+/* Page Transitions */
+@keyframes dashboard-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.995);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+.animate-dashboard-enter {
+  animation: dashboard-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+
+/* Curtain Wipe Animation */
+@keyframes curtain-wipe {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
+}
+
