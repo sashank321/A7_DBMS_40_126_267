@@ -64,15 +64,13 @@ export default function LoginPage() {
           <Link href="/" className="group flex items-center gap-1 text-ink-black">
               <svg className="h-8 w-8 text-accent-orange transition-transform duration-300 group-hover:scale-110 mr-2" viewBox="0 0 32 32" fill="none"><circle cx="6" cy="16" r="4" fill="#E57D25" /><circle cx="26" cy="16" r="4" fill="#E57D25" /><path d="M6 16 C 12 8, 20 24, 26 16" stroke="#E57D25" strokeWidth="2" strokeLinecap="round" /></svg>
               <span
-                className="text-4xl tracking-tight text-ink-black transition-opacity group-hover:opacity-90"
-                style={{ fontFamily: "'Instrument Serif', serif" }}
+                className="text-3xl font-bold tracking-tight text-ink-black transition-opacity group-hover:opacity-90 font-mono"
               >
-                AllocFlow
+                KnowledgeSphere<span className="text-accent-orange font-normal">.AI</span>
               </span>
-            <sup className="text-xs text-muted-foreground">®</sup>
           </Link>
           <p className="text-xs text-muted-foreground">
-            Academic Conference Reviewer Allocation Platform
+            Enterprise Knowledge Intelligence Platform
           </p>
         </div>
 
@@ -92,7 +90,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   required
-                  placeholder="admin@allocflow.io"
+                  placeholder="alice.admin@knowledgesphere.ai"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-lg border border-ink-black/10 bg-ink-black/[0.04] py-2.5 pl-10 pr-3 text-xs text-ink-black placeholder:text-muted-foreground focus:border-ink-black/30 focus:outline-none backdrop-blur-md"
@@ -132,38 +130,38 @@ export default function LoginPage() {
             <div className="grid grid-cols-2 gap-2 text-xs">
               <button
                 type="button"
-                onClick={() => handleDemoLogin("SUPER_ADMIN")}
+                onClick={() => handleDemoLogin("Admin")}
                 className="rounded-lg border border-ink-black/5 bg-ink-black/[0.03] p-2.5 text-left hover:bg-ink-black/[0.08] hover:border-ink-black/20 transition-all"
               >
-                <p className="font-semibold text-ink-black">System Admin</p>
+                <p className="font-semibold text-ink-black">Alice (Admin)</p>
                 <p className="text-[10px] text-muted-foreground">Full privileges</p>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleDemoLogin("CONFERENCE_ADMIN")}
+                onClick={() => handleDemoLogin("Manager")}
                 className="rounded-lg border border-ink-black/5 bg-ink-black/[0.03] p-2.5 text-left hover:bg-ink-black/[0.08] hover:border-ink-black/20 transition-all"
               >
-                <p className="font-semibold text-ink-black">Conference Chair</p>
-                <p className="text-[10px] text-muted-foreground">Manage matching</p>
+                <p className="font-semibold text-ink-black">Bob (Manager)</p>
+                <p className="text-[10px] text-muted-foreground">HR department</p>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleDemoLogin("REVIEWER")}
+                onClick={() => handleDemoLogin("Employee")}
                 className="rounded-lg border border-ink-black/5 bg-ink-black/[0.03] p-2.5 text-left hover:bg-ink-black/[0.08] hover:border-ink-black/20 transition-all"
               >
-                <p className="font-semibold text-ink-black">PC Reviewer</p>
-                <p className="text-[10px] text-muted-foreground">Reviewer profile</p>
+                <p className="font-semibold text-ink-black">Diana (Employee)</p>
+                <p className="text-[10px] text-muted-foreground">Engineering scope</p>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleDemoLogin("AUTHOR")}
+                onClick={() => handleDemoLogin("Employee")}
                 className="rounded-lg border border-ink-black/5 bg-ink-black/[0.03] p-2.5 text-left hover:bg-ink-black/[0.08] hover:border-ink-black/20 transition-all"
               >
-                <p className="font-semibold text-ink-black">Author</p>
-                <p className="text-[10px] text-muted-foreground">Submit papers</p>
+                <p className="font-semibold text-ink-black">Hannah (Employee)</p>
+                <p className="text-[10px] text-muted-foreground">Restricted scope</p>
               </button>
             </div>
           </div>
@@ -171,8 +169,8 @@ export default function LoginPage() {
 
         {/* Back Link */}
         <div className="text-center">
-          <Link href="/" className="text-xs text-muted-foreground hover:text-ink-black transition-colors">
-            &larr; Back to AllocFlow Home
+          <Link href="/" className="text-xs text-muted-foreground hover:text-ink-black transition-colors font-mono">
+            &larr; Back to KnowledgeSphere Home
           </Link>
         </div>
       </div>

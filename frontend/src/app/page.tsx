@@ -13,7 +13,7 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-[#E57D25] animate-pulse"></span>
           <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#0F0F0F]">
-            KnowledgeSphere AI <span className="text-[#888] font-normal">× AllocFlow UI</span>
+            KnowledgeSphere AI <span className="text-[#888] font-normal">• Enterprise Intelligence</span>
           </span>
         </div>
         <div className="h-4 w-px bg-[#ccc] hidden sm:block"></div>

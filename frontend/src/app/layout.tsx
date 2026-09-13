@@ -26,10 +26,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>AllocFlow | Reviewer Assignment & Manuscript Allocation Platform</title>
+        <title>KnowledgeSphere AI | Enterprise Knowledge Intelligence Platform</title>
         <meta
           name="description"
-          content="Production-grade conference paper review-management and bipartite max-flow matching platform comparing Ford-Fulkerson, Edmonds-Karp, and Dinic algorithms."
+          content="An AI-Powered Enterprise Knowledge Intelligence Platform combining PostgreSQL 18 3NF normalized schema, 384-dim dense vector search, grounded RAG copilot with verified citations, and safe Text-to-SQL analytics."
         />
       </head>
       <body>
