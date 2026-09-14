@@ -60,9 +60,15 @@ Thumbs.db
 # Gemini / Scratch
 .gemini/
 scratch/
+.git_legacy_backup/
+legacy_archive/
+tempCodeRunnerFile.py
+*.tsbuildinfo
+tools/
 
 # Scratch & Reference PDFs
 poly/
 dbms project/
 *.pdf
-!storage/documents/*
+
+
