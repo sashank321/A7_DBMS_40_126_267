@@ -298,3 +298,5 @@ tests/test_text2sql.py::test_destructive_query_rejection PASSED          [100%]
 
 ====================== 27 passed, 10 warnings in 40.61s =======================
 ```
+
+<!-- Review 4 Audit Verification Timestamp: 2026-09-26 12:00:00 +0530 -->
