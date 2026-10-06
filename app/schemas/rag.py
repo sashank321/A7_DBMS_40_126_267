@@ -1,9 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from app.schemas.validation import QueryText
 from typing import Optional, List, Dict, Any
 
 class RAGRequest(BaseModel):
-    question: str
-    top_k: int = 4
+    question: QueryText
+    top_k: int = Field(default=4, ge=1, le=100, strict=True)
 
 class Citation(BaseModel):
     document_id: int
@@ -13,7 +14,7 @@ class Citation(BaseModel):
     snippet: str
 
 class RAGResponse(BaseModel):
-    question: str
+    question: QueryText
     answer: str
     route_intent: str
     confidence: float

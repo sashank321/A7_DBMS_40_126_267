@@ -29,7 +29,7 @@ export default function RootLayout({
         <title>KnowledgeSphere AI | Enterprise Knowledge Intelligence Platform</title>
         <meta
           name="description"
-          content="An AI-Powered Enterprise Knowledge Intelligence Platform combining PostgreSQL 18 3NF normalized schema, 384-dim dense vector search, grounded RAG copilot with verified citations, and safe Text-to-SQL analytics."
+          content="An AI-Powered Enterprise Knowledge Intelligence Platform combining a normalized PostgreSQL schema, semantic vector search, grounded RAG copilot with verified citations, and safe Text-to-SQL analytics."
         />
       </head>
       <body>

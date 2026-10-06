@@ -1,3 +1,4 @@
+from app.services.document_service import document_service
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from app.models.postgres_models import KnowledgeEntity, KnowledgeRelationship, EntitySource, Document, User, Department
@@ -67,8 +68,18 @@ class GraphService:
             db.flush()
         return src
 
-    def get_full_graph(self, db: Session, limit_nodes: int = 50) -> Dict[str, Any]:
-        entities = db.query(KnowledgeEntity).limit(limit_nodes).all()
+    def visible_entity_ids(self, db: Session, user: Optional[User]):
+        if user is None or user.role.role_name == "Admin":
+            return None
+        doc_ids = [d.document_id for d in document_service.list_accessible_documents(db, user)]
+        return {s.entity_id for s in db.query(EntitySource).filter(EntitySource.document_id.in_(doc_ids)).all()}
+
+    def get_full_graph(self, db: Session, limit_nodes: int = 50, user: Optional[User] = None) -> Dict[str, Any]:
+        allowed = self.visible_entity_ids(db, user)
+        query = db.query(KnowledgeEntity)
+        if allowed is not None:
+            query = query.filter(KnowledgeEntity.entity_id.in_(allowed))
+        entities = query.order_by(KnowledgeEntity.entity_id).limit(max(1, min(limit_nodes, 500))).all()
         entity_ids = {e.entity_id for e in entities}
         
         relationships = db.query(KnowledgeRelationship).filter(
@@ -97,8 +108,12 @@ class GraphService:
             "total_edges": len(edges)
         }
 
-    def find_connected_entities(self, db: Session, entity_name: str) -> List[Dict[str, Any]]:
-        entity = db.query(KnowledgeEntity).filter(
+    def find_connected_entities(self, db: Session, entity_name: str, user: Optional[User] = None) -> List[Dict[str, Any]]:
+        allowed = self.visible_entity_ids(db, user)
+        query = db.query(KnowledgeEntity)
+        if allowed is not None:
+            query = query.filter(KnowledgeEntity.entity_id.in_(allowed))
+        entity = query.filter(
             KnowledgeEntity.entity_name.ilike(f"%{entity_name}%")
         ).first()
 
@@ -108,6 +123,8 @@ class GraphService:
         results = []
         # Outgoing
         for rel in entity.outgoing_relationships:
+            if allowed is not None and rel.target_entity_id not in allowed:
+                continue
             results.append({
                 "source": entity.entity_name,
                 "relation": rel.relation_type,
@@ -117,6 +134,8 @@ class GraphService:
             })
         # Incoming
         for rel in entity.incoming_relationships:
+            if allowed is not None and rel.source_entity_id not in allowed:
+                continue
             results.append({
                 "source": rel.source_entity.entity_name,
                 "source_type": rel.source_entity.entity_type,

@@ -58,17 +58,39 @@ h1, h2, h3, .font-heading {
   font-family: var(--font-body) !important;
 }
 
-/* 3D Scene and Computer Unit Scaling */
-.scene {
-  transform: scale(0.85) !important;
-  transform-origin: center center !important;
+/* Keep the scale responsive while cursor rotation moves the whole assembly. */
+.hero-main-grid .scene {
+  --hero-scale: 0.85;
+  transform: scale(var(--hero-scale)) rotateX(var(--hero-rotate-x, 5deg)) rotateY(var(--hero-rotate-y, -12deg)) !important;
+  transform-origin: center center;
+  transform-style: preserve-3d;
+  transition: none !important;
+  cursor: grab;
+  touch-action: pan-y;
 }
-
 @media (max-width: 1200px) {
-  .scene {
-    transform: scale(0.78) !important;
-  }
+  .hero-main-grid .scene { --hero-scale: 0.78; }
 }
+@media (prefers-reduced-motion: reduce) {
+  .hero-main-grid .scene { transform: scale(var(--hero-scale)) !important; }
+}
+/* Center the existing screen and keep both UI columns inside its bezel. */
+.hero-main-grid .screen-inset {
+  flex: 0 0 220px;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hero-main-grid .crt { flex: none; }
+.hero-main-grid .crt-ui {
+  display: grid;
+  grid-template-columns: minmax(0, 30%) minmax(0, 1fr);
+  align-items: stretch;
+}
+.hero-main-grid .crt-sidebar { width: auto; min-width: 0; }
+.hero-main-grid .crt-main-area { min-width: 0; }
+.hero-main-grid .crt-window { width: 100%; box-sizing: border-box; }
 
 .font-space {
   font-family: var(--font-space) !important;

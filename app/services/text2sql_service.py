@@ -3,6 +3,9 @@ import time
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+import sqlglot
+from sqlglot import exp
+from app.services.document_service import document_service
 from app.models.postgres_models import User
 
 # Strict Whitelist of Permitted Tables and Views
@@ -20,38 +23,68 @@ FORBIDDEN_KEYWORDS = [
 ]
 
 class Text2SQLService:
-    def validate_sql(self, sql_query: str) -> (bool, str):
-        """Validates that the SQL query is safe, read-only SELECT, and uses only permitted tables."""
-        clean_sql = sql_query.strip().rstrip(";").strip()
-
-        # 1. Must start with SELECT
-        if not clean_sql.upper().startswith("SELECT"):
-            return False, "Security Violation: Only SELECT queries are permitted."
-
-        # 2. Check for forbidden keywords and injection markers
-        for kw in FORBIDDEN_KEYWORDS:
-            if re.search(kw, clean_sql, re.IGNORECASE):
-                return False, f"Security Violation: Query contains prohibited token '{kw}'."
-
-        # 3. Extract table names and check against whitelist
-        table_matches = re.findall(r"\bFROM\s+([a-zA-Z_]+)|\bJOIN\s+([a-zA-Z_]+)", clean_sql, re.IGNORECASE)
-        found_tables = set()
-        for m in table_matches:
-            tbl = (m[0] or m[1]).lower()
-            found_tables.add(tbl)
-
-        for tbl in found_tables:
-            if tbl not in ALLOWED_TABLES:
-                return False, f"Security Violation: Table or view '{tbl}' is not in the approved query whitelist."
-
+    def validate_sql(self, sql_query: str) -> tuple[bool, str]:
+        """Parse the complete query before allowing a bounded read-only SELECT."""
+        try:
+            statements = sqlglot.parse(sql_query, read="postgres")
+        except sqlglot.errors.ParseError:
+            return False, "Security Violation: Invalid SQL syntax."
+        if len(statements) != 1 or not isinstance(statements[0], exp.Select):
+            return False, "Security Violation: Only one SELECT query is permitted."
+        query = statements[0]
+        unsafe = (exp.Insert, exp.Update, exp.Delete, exp.Create, exp.Drop, exp.Alter, exp.Command, exp.Into, exp.Lock)
+        if any(isinstance(node, unsafe) for node in query.walk()):
+            return False, "Security Violation: Mutating statements are prohibited."
+        for table in query.find_all(exp.Table):
+            if table.name.lower() not in ALLOWED_TABLES or table.catalog or table.db not in ("", "public"):
+                return False, "Security Violation: Query references an unapproved table or schema."
+        for column in query.find_all(exp.Column):
+            if column.name.lower() in {"password", "password_hash"}:
+                return False, "Security Violation: Credentials cannot be queried."
+        if any(t.name.lower() == "users" for t in query.find_all(exp.Table)):
+            if any(not isinstance(star.parent, exp.Count) for star in query.find_all(exp.Star)):
+                return False, "Security Violation: Select specific public user fields."
+        allowed_functions = {"COUNT", "SUM", "AVG", "MIN", "MAX", "COALESCE", "LOWER", "UPPER", "LENGTH", "ROUND"}
+        for function in query.find_all(exp.Func):
+            name = function.name.upper() if isinstance(function, exp.Anonymous) else function.sql_name().upper()
+            if name not in allowed_functions:
+                return False, "Security Violation: This SQL function is not permitted."
         return True, "Query is safe for execution."
+
+    def _scope_sql(self, sql_query: str, db: Session, user: User) -> str:
+        query = sqlglot.parse_one(sql_query, read="postgres")
+        ids = [int(d.document_id) for d in document_service.list_accessible_documents(db, user)]
+        id_list = ",".join(map(str, ids)) or "NULL"
+        scoped_docs = {"documents", "document_versions", "document_tags", "v_document_overview"}
+        for table in list(query.find_all(exp.Table)):
+            name = table.name.lower()
+            condition = None
+            projection = "*"
+            if name == "users":
+                projection = "user_id, name, email, role_id, department_id, created_at"
+                if user.role.role_name == "Employee":
+                    condition = f"user_id = {int(user.user_id)}"
+            elif user.role.role_name != "Admin" and name in scoped_docs:
+                condition = f"document_id IN ({id_list})"
+            elif user.role.role_name != "Admin" and name in {"audit_logs", "v_user_access_matrix"}:
+                condition = f"user_id = {int(user.user_id)} AND document_id IN ({id_list})"
+            elif user.role.role_name != "Admin" and name == "tags":
+                condition = f"tag_id IN (SELECT tag_id FROM document_tags WHERE document_id IN ({id_list}))"
+            if condition or name == "users":
+                inner_sql = f"SELECT {projection} FROM {name}"
+                if condition:
+                    inner_sql += f" WHERE {condition}"
+                table.replace(sqlglot.parse_one(inner_sql, read="postgres").subquery(alias=table.alias_or_name))
+        return query.sql(dialect="postgres")
 
     def natural_to_sql(self, natural_query: str, user: User) -> str:
         """Translates natural language questions to compliant PostgreSQL queries."""
-        q = natural_query.lower()
+        q = natural_query.strip().lower()
+        if re.match(r"^(select|with|insert|update|delete|drop|alter|truncate|create|grant|revoke|copy|execute)\b", q):
+            return natural_query.strip()
 
         # Query 1: Count of documents by department
-        if "department" in q and ("count" in q or "how many" in q or "number of" in q):
+        if "department" in q and ("count" in q or "how many" in q or "number of" in q or "total" in q):
             return """
                 SELECT d.department_name, COUNT(doc.document_id) AS total_documents
                 FROM departments d
@@ -61,7 +94,7 @@ class Text2SQLService:
             """.strip()
 
         # Query 2: Users in departments
-        if "user" in q and ("department" in q or "works in" in q):
+        if "user" in q and ("department" in q or "works in" in q or "role" in q):
             return """
                 SELECT u.name AS user_name, u.email, d.department_name, r.role_name
                 FROM users u
@@ -118,10 +151,12 @@ class Text2SQLService:
             LIMIT 10;
         """.strip()
 
-    def execute_safe_query(self, db: Session, sql_query: str, natural_query: str) -> Dict[str, Any]:
+    def execute_safe_query(self, db: Session, sql_query: str, natural_query: str, user: User = None) -> Dict[str, Any]:
         """Safely executes validated SQL and returns structured results."""
         clean_sql = sql_query.strip().rstrip(";").strip()
         is_safe, msg = self.validate_sql(clean_sql)
+        if is_safe and user is None:
+            is_safe, msg = False, "An authenticated user is required for permission-scoped SQL."
         if not is_safe:
             return {
                 "natural_query": natural_query,
@@ -138,7 +173,9 @@ class Text2SQLService:
         start_time = time.time()
         try:
             # Set statement timeout to 3000ms for protection against resource exhaustion
-            db.execute(text("SET statement_timeout = 3000;"))
+            clean_sql = self._scope_sql(clean_sql, db, user)
+            db.execute(text("SET TRANSACTION READ ONLY"))
+            db.execute(text("SET LOCAL statement_timeout = 3000"))
             result = db.execute(text(clean_sql))
             rows = result.fetchall()
             cols = list(result.keys()) if result.keys() else []

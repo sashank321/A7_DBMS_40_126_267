@@ -1,5 +1,6 @@
 "use client";
 
+import { usePlatform, useDemoAccounts } from "@/lib/platform";
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -23,13 +24,14 @@ import {
 } from "recharts";
 
 export default function TelemetryPage() {
+  const platform = usePlatform();
   const queryClient = useQueryClient();
-  const [docId, setDocId] = useState(1);
+  const [docId, setDocId] = useState(0);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
 
-  const { data: telemetry, isLoading } = useQuery({
+  const { data: telemetry, isLoading, error } = useQuery({
     queryKey: ["mongo-telemetry"],
     queryFn: () => api.getMongoTelemetry(),
     refetchInterval: 5000,
@@ -39,6 +41,10 @@ export default function TelemetryPage() {
     queryKey: ["documents-list"],
     queryFn: () => api.getDocuments(),
   });
+
+  React.useEffect(() => {
+    if (documents && !documents.some(d => d.document_id === docId)) setDocId(documents[0]?.document_id ?? 0);
+  }, [documents, docId]);
 
   const reviewMutation = useMutation({
     mutationFn: () => api.submitReview(docId, rating, comment),
@@ -50,14 +56,7 @@ export default function TelemetryPage() {
     }
   });
 
-  const telem = telemetry || {
-    total_activities: 24,
-    total_reviews: 12,
-    average_rating: 4.8,
-    ratings_distribution: { "5": 8, "4": 3, "3": 1 },
-    action_distribution: { "SEARCH": 14, "DOCUMENT_VIEW": 8, "RAG_QUERY": 6 },
-    recent_activities: []
-  };
+  const telem = telemetry || { total_activities: 0, total_reviews: 0, average_rating: 0, ratings_distribution: {}, action_distribution: {}, recent_activities: [] };
 
   const ratingsChartData = Object.entries(telem.ratings_distribution || {}).map(([star, count]) => ({
     stars: `${star} Stars`,
@@ -71,13 +70,15 @@ export default function TelemetryPage() {
 
   return (
     <div className="space-y-6 select-none font-sans text-ink-black pb-12 max-w-5xl mx-auto">
+      {error && <p role="alert" className="text-red-700">Unable to load telemetry. Please retry.</p>}
+      {reviewMutation.isError && <p role="alert" className="text-red-700">The review could not be saved. Check document access and retry.</p>}
       {/* Banner */}
       <div className="border border-ink-black/10 bg-white p-6 rounded-2xl shadow-sm space-y-2">
         <div className="flex items-center gap-2 font-space text-[10px] text-muted tracking-widest uppercase">
           <Database className="h-3.5 w-3.5 text-green-600" />
           <span>[ POLYGLOT NOSQL PERSISTENCE ]</span>
           <span>//</span>
-          <span className="text-green-700 font-bold">MongoDB 8.x Document Collections</span>
+          <span className="text-green-700 font-bold">{platform.mongoLabel} Document Collections</span>
         </div>
         <h1 className="text-3xl font-heading font-bold text-ink-black">
           NoSQL Telemetry <span className="text-accent-orange italic font-normal">& Reviews</span>
@@ -155,7 +156,7 @@ export default function TelemetryPage() {
           {feedbackSuccess && (
             <span className="flex items-center gap-1 text-xs text-green-700 font-bold">
               <CheckCircle className="h-3.5 w-3.5" />
-              Review saved into knowledgesphere_nosql!
+              Review saved.
             </span>
           )}
         </div>
@@ -183,6 +184,8 @@ export default function TelemetryPage() {
                 <button
                   key={s}
                   type="button"
+                  aria-label={`Rate ${s} stars`}
+                  aria-pressed={rating === s}
                   onClick={() => setRating(s)}
                   className={`p-1.5 rounded transition-transform ${rating >= s ? "text-accent-orange scale-110" : "text-muted"}`}
                 >
@@ -209,7 +212,7 @@ export default function TelemetryPage() {
           <button
             type="button"
             onClick={() => reviewMutation.mutate()}
-            disabled={reviewMutation.isPending || !comment.trim()}
+            disabled={reviewMutation.isPending || !comment.trim() || !docId || !documents?.length}
             className="flex items-center gap-2 px-5 py-2.5 bg-ink-black text-beige-bg font-bold text-xs rounded-lg hover:bg-accent-orange transition-colors disabled:opacity-50"
           >
             <Send className="h-3.5 w-3.5" />

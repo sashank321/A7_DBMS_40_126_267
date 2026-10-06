@@ -46,7 +46,7 @@ class ChunkingService:
         """
         # Remove existing chunks for this document if re-indexing
         db.query(DocumentChunk).filter(DocumentChunk.document_id == document_id).delete()
-        db.commit()
+        db.flush()
 
         raw_chunks = self.split_text_into_chunks(text_content)
         if not raw_chunks:
@@ -76,7 +76,7 @@ class ChunkingService:
             db.add(embedding_obj)
             created_count += 1
 
-        db.commit()
+        db.flush()
         return created_count
 
     def reindex_all_chunks(self, db: Session) -> int:

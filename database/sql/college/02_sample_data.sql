@@ -21,14 +21,14 @@ INSERT INTO departments (department_id, department_name) VALUES
 -- 3. Insert Users (8 Users)
 -- Passwords represented as secure bcrypt-style hashes for realistic context
 INSERT INTO users (user_id, name, email, password, role_id, department_id) VALUES
-(1, 'Alice Smith', 'alice.admin@knowledgesphere.ai', '$2a$12$eImiTXuWVxfM37uY4JANjO...hash1', 1, 3),
-(2, 'Bob Jones', 'bob.hr@knowledgesphere.ai', '$2a$12$eImiTXuWVxfM37uY4JANjO...hash2', 2, 1),
-(3, 'Charlie Brown', 'charlie.fin@knowledgesphere.ai', '$2a$12$eImiTXuWVxfM37uY4JANjO...hash3', 2, 2),
-(4, 'Diana Prince', 'diana.eng@knowledgesphere.ai', '$2a$12$eImiTXuWVxfM37uY4JANjO...hash4', 3, 3),
-(5, 'Evan Wright', 'evan.mkt@knowledgesphere.ai', '$2a$12$eImiTXuWVxfM37uY4JANjO...hash5', 3, 4),
-(6, 'Fiona Gallagher', 'fiona.legal@knowledgesphere.ai', '$2a$12$eImiTXuWVxfM37uY4JANjO...hash6', 2, 5),
-(7, 'George Clark', 'george.eng@knowledgesphere.ai', '$2a$12$eImiTXuWVxfM37uY4JANjO...hash7', 3, 3),
-(8, 'Hannah Abbott', 'hannah.hr@knowledgesphere.ai', '$2a$12$eImiTXuWVxfM37uY4JANjO...hash8', 3, 1);
+(1, 'Aarav Kumar', 'aarav.admin@knowledgesphere.ai', '$2b$12$M20oT5mG49uznRR4BoSP1eX0ZOXl1WZ1FQIU38iekorBsA4m667cy', 1, 3),
+(2, 'Neha Sharma', 'neha.hr@knowledgesphere.ai', '$2b$12$M20oT5mG49uznRR4BoSP1eX0ZOXl1WZ1FQIU38iekorBsA4m667cy', 2, 1),
+(3, 'Rohan Mehta', 'rohan.fin@knowledgesphere.ai', '$2b$12$M20oT5mG49uznRR4BoSP1eX0ZOXl1WZ1FQIU38iekorBsA4m667cy', 2, 2),
+(4, 'Priya Nair', 'priya.eng@knowledgesphere.ai', '$2b$12$M20oT5mG49uznRR4BoSP1eX0ZOXl1WZ1FQIU38iekorBsA4m667cy', 3, 3),
+(5, 'Vikram Singh', 'vikram.mkt@knowledgesphere.ai', '$2b$12$M20oT5mG49uznRR4BoSP1eX0ZOXl1WZ1FQIU38iekorBsA4m667cy', 3, 4),
+(6, 'Ananya Iyer', 'ananya.legal@knowledgesphere.ai', '$2b$12$M20oT5mG49uznRR4BoSP1eX0ZOXl1WZ1FQIU38iekorBsA4m667cy', 2, 5),
+(7, 'Karan Patel', 'karan.eng@knowledgesphere.ai', '$2b$12$M20oT5mG49uznRR4BoSP1eX0ZOXl1WZ1FQIU38iekorBsA4m667cy', 3, 3),
+(8, 'Meera Rao', 'meera.hr@knowledgesphere.ai', '$2b$12$M20oT5mG49uznRR4BoSP1eX0ZOXl1WZ1FQIU38iekorBsA4m667cy', 3, 1);
 
 -- 4. Insert Categories (5 Categories)
 INSERT INTO categories (category_id, category_name) VALUES

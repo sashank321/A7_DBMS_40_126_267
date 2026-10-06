@@ -1,5 +1,7 @@
 "use client";
 
+import { usePlatform, useDemoAccounts } from "@/lib/platform";
+import { apiErrorMessage } from "@/lib/utils";
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -17,25 +19,35 @@ import {
   Clock,
   Filter
 } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 import type { DocumentItem } from "@/types";
 
 export default function DocumentsPage() {
+  const platform = usePlatform();
+  const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: api.getCatalog });
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedDept, setSelectedDept] = useState<number | undefined>(undefined);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
 
+  const [versionDoc, setVersionDoc] = useState<DocumentItem | null>(null);
+  const [versionContent, setVersionContent] = useState("");
+  const [versionFile, setVersionFile] = useState<File | null>(null);
+  const [permissionDoc, setPermissionDoc] = useState<DocumentItem | null>(null);
+  const [permissionUser, setPermissionUser] = useState(0);
+  const [permission, setPermission] = useState({ can_view: true, can_edit: false, can_delete: false });
+  React.useEffect(() => { if (user?.role !== "Admin" && (user as any)?.departmentId) setDepartmentId((user as any).departmentId); }, [user]);
   // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [departmentId, setDepartmentId] = useState(3);
-  const [categoryId, setCategoryId] = useState(3);
-  const [tags, setTags] = useState("AI, Documentation, Enterprise");
+  const [departmentId, setDepartmentId] = useState(0);
+  const [categoryId, setCategoryId] = useState(0);
+  const [tags, setTags] = useState("");
   const [content, setContent] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const { data: documents, isLoading } = useQuery({
+  const { data: documents, isLoading, error } = useQuery({
     queryKey: ["documents-list", selectedDept],
     queryFn: () => api.getDocuments(selectedDept),
   });
@@ -45,7 +57,7 @@ export default function DocumentsPage() {
       const formData = new FormData();
       formData.append("title", title);
       formData.append("description", description);
-      formData.append("department_id", String(departmentId));
+      formData.append("department_id", String(user?.role === "Admin" ? departmentId : (user as any).departmentId || departmentId));
       formData.append("category_id", String(categoryId));
       formData.append("tags", tags);
       if (selectedFile) {
@@ -56,8 +68,8 @@ export default function DocumentsPage() {
       return api.createDocument(formData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents-list"] });
-      setStatusMsg({ type: "success", text: "Document ingested and 384-dim vectors indexed!" });
+      queryClient.invalidateQueries();
+      setStatusMsg({ type: "success", text: "Document saved and indexed." });
       setIsUploadOpen(false);
       setTitle("");
       setDescription("");
@@ -65,29 +77,47 @@ export default function DocumentsPage() {
       setSelectedFile(null);
     },
     onError: (err: any) => {
-      setStatusMsg({ type: "error", text: err.response?.data?.detail || "Upload failed." });
+      setStatusMsg({ type: "error", text: apiErrorMessage(err, "Upload failed.") });
     }
   });
 
   const deleteMutation = useMutation({
     mutationFn: (docId: number) => api.deleteDocument(docId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents-list"] });
+      queryClient.invalidateQueries();
       setStatusMsg({ type: "success", text: "Document deleted." });
     }
   });
 
+  const versionMutation = useMutation({
+    mutationFn: async () => { const data = new FormData(); if (versionFile) data.append("file", versionFile); else data.append("content", versionContent); return api.addDocumentVersion(versionDoc!.document_id, data); },
+    onSuccess: () => { queryClient.invalidateQueries(); setVersionDoc(null); setVersionContent(""); setVersionFile(null); setStatusMsg({ type: "success", text: "New version saved and indexed." }); },
+    onError: () => setStatusMsg({ type: "error", text: "The new version could not be saved." }),
+  });
+  const { data: permissionEditor, isLoading: permissionLoading, error: permissionError } = useQuery({ queryKey: ["permission-editor", permissionDoc?.document_id], queryFn: () => api.getPermissionEditor(permissionDoc!.document_id), enabled: !!permissionDoc });
+  React.useEffect(() => {
+    const grant = permissionEditor?.permissions.find(p => p.user_id === permissionUser);
+    setPermission({ can_view: grant?.can_view ?? false, can_edit: grant?.can_edit ?? false, can_delete: grant?.can_delete ?? false });
+  }, [permissionEditor, permissionUser]);
+  const permissionMutation = useMutation({
+    mutationFn: () => api.updateDocumentPermissions(permissionDoc!.document_id, { user_id: permissionUser, ...permission }),
+    onSuccess: () => { queryClient.invalidateQueries(); setPermissionDoc(null); setStatusMsg({ type: "success", text: "Document permissions updated." }); },
+    onError: () => setStatusMsg({ type: "error", text: "Permissions could not be updated. Check the target user and your access." }),
+  });
+  const download = async (doc: DocumentItem) => { try { await api.downloadDocument(doc.document_id, doc.file_name || "document.txt"); } catch { setStatusMsg({ type: "error", text: "Document download failed." }); } };
   const docs = documents || [];
 
   return (
     <div className="space-y-6 select-none font-sans text-ink-black pb-12">
+      {error && <p role="alert" className="text-red-700">Unable to load documents. Please retry.</p>}
+      {deleteMutation.isError && <p role="alert" className="text-red-700">The document could not be deleted.</p>}
       {/* Top Banner */}
       <div className="border border-ink-black/10 bg-white p-6 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 font-space text-[10px] text-muted tracking-widest uppercase mb-1">
             <span>[ 3NF RELATIONAL STORE ]</span>
             <span>//</span>
-            <span className="text-accent-orange font-bold">PostgreSQL 18.4 Document Catalog</span>
+            <span className="text-accent-orange font-bold">{platform.pgLabel} Document Catalog</span>
           </div>
           <h1 className="text-3xl font-heading font-bold text-ink-black">
             Document <span className="text-accent-orange italic font-normal">Explorer</span>
@@ -121,17 +151,10 @@ export default function DocumentsPage() {
       )}
 
       {/* Filter Toolbar */}
-      <div className="flex items-center gap-3 font-space text-xs">
+      <div className="flex flex-wrap items-center gap-3 font-space text-xs">
         <Filter className="h-3.5 w-3.5 text-muted" />
         <span className="text-muted uppercase text-[10px]">Filter Department:</span>
-        {[
-          { id: undefined, label: "All Depts" },
-          { id: 1, label: "HR" },
-          { id: 2, label: "Finance" },
-          { id: 3, label: "Engineering" },
-          { id: 4, label: "Marketing" },
-          { id: 5, label: "Legal" },
-        ].map((dept) => (
+        {[{ id: undefined, label: "All Depts" }, ...(catalog?.departments || []).map(d => ({ id: d.id, label: d.name }))].map((dept) => (
           <button
             key={String(dept.id)}
             onClick={() => setSelectedDept(dept.id)}
@@ -147,8 +170,8 @@ export default function DocumentsPage() {
       </div>
 
       {/* Document Table */}
-      <div className="border border-ink-black/10 bg-white rounded-2xl shadow-sm overflow-hidden font-space">
-        <table className="w-full text-left border-collapse text-xs">
+      <div className="border border-ink-black/10 bg-white rounded-2xl shadow-sm overflow-x-auto font-space">
+        <table className="w-full min-w-[800px] text-left border-collapse text-xs">
           <thead>
             <tr className="border-b border-ink-black/10 bg-black/5 text-[10px] uppercase tracking-wider text-muted">
               <th className="p-4">ID</th>
@@ -197,9 +220,12 @@ export default function DocumentsPage() {
                   </td>
                   <td className="p-4 text-muted">{doc.uploader_name}</td>
                   <td className="p-4 text-right space-x-2">
+                    <button onClick={() => download(doc)} title="Download Document" className="p-1.5 text-muted hover:text-accent-orange"><Download className="h-4 w-4" /></button>
+                    {doc.can_edit && <button onClick={() => { setVersionContent(""); setVersionFile(null); versionMutation.reset(); setVersionDoc(doc); }} title="Add Version" className="p-1.5 text-muted hover:text-accent-orange"><Layers className="h-4 w-4" /></button>}
+                    {(user?.role === "Admin" || Number(user?.id) === doc.uploaded_by) && <button onClick={() => { setPermissionUser(0); setPermission({ can_view: true, can_edit: false, can_delete: false }); permissionMutation.reset(); setPermissionDoc(doc); }} title="Manage Permissions" className="p-1.5 text-muted hover:text-accent-orange"><Shield className="h-4 w-4" /></button>}
                     {doc.can_delete && (
                       <button
-                        onClick={() => deleteMutation.mutate(doc.document_id)}
+                        onClick={() => { if (window.confirm(`Delete "${doc.title}" and its versions?`)) deleteMutation.mutate(doc.document_id); }}
                         className="p-1.5 text-muted hover:text-red-600 transition-colors"
                         title="Delete Document"
                       >
@@ -216,18 +242,21 @@ export default function DocumentsPage() {
 
       {/* Upload Modal */}
       {isUploadOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 font-space">
+        <Modal label="Ingest document" onClose={() => setIsUploadOpen(false)} busy={uploadMutation.isPending}>
           <div className="bg-white border border-ink-black/10 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-ink-black/10 pb-3">
               <h3 className="font-heading text-xl font-bold text-ink-black">Ingest New Enterprise Document</h3>
-              <button onClick={() => setIsUploadOpen(false)} className="text-muted hover:text-ink-black">✕</button>
+              <button aria-label="Close upload" disabled={uploadMutation.isPending} onClick={() => setIsUploadOpen(false)} className="text-muted hover:text-ink-black">✕</button>
             </div>
 
+            {uploadMutation.isError && <p role="alert" className="text-sm text-red-700">{apiErrorMessage(uploadMutation.error, "Upload failed. Please retry.")}</p>}
             <div className="space-y-3 text-xs">
               <div>
                 <label className="block text-[10px] uppercase text-muted font-bold mb-1">Document Title</label>
                 <input
                   type="text"
+                  aria-label="Document title"
+                  maxLength={200}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Distributed Database Architecture"
@@ -251,14 +280,12 @@ export default function DocumentsPage() {
                   <label className="block text-[10px] uppercase text-muted font-bold mb-1">Department</label>
                   <select
                     value={departmentId}
-                    onChange={(e) => setDepartmentId(Number(e.target.value))}
+                    disabled={user?.role !== "Admin"}
+                  onChange={(e) => setDepartmentId(Number(e.target.value))}
                     className="w-full p-2.5 border border-ink-black/15 rounded-lg bg-white"
                   >
-                    <option value={1}>Human Resources</option>
-                    <option value={2}>Finance</option>
-                    <option value={3}>Engineering</option>
-                    <option value={4}>Marketing</option>
-                    <option value={5}>Legal</option>
+                    <option value={0}>Select department</option>
+                    {(catalog?.departments || []).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
                   </select>
                 </div>
                 <div>
@@ -268,11 +295,8 @@ export default function DocumentsPage() {
                     onChange={(e) => setCategoryId(Number(e.target.value))}
                     className="w-full p-2.5 border border-ink-black/15 rounded-lg bg-white"
                   >
-                    <option value={1}>HR Policies</option>
-                    <option value={2}>Financial Reports</option>
-                    <option value={3}>Technical Documentation</option>
-                    <option value={4}>Marketing Strategy</option>
-                    <option value={5}>Legal Contracts</option>
+                    <option value={0}>Select category</option>
+                    {(catalog?.categories || []).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
                   </select>
                 </div>
               </div>
@@ -292,6 +316,7 @@ export default function DocumentsPage() {
                 <label className="block text-[10px] uppercase text-muted font-bold mb-1">Upload File (.txt, .md, .pdf, .docx)</label>
                 <input
                   type="file"
+                  accept=".txt,.md,.pdf,.docx,.json,.csv,.sql,.py"
                   onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                   className="w-full text-xs text-muted file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-black/5 file:text-ink-black hover:file:bg-black/10"
                 />
@@ -313,6 +338,7 @@ export default function DocumentsPage() {
 
             <div className="flex justify-end gap-3 pt-3 border-t border-ink-black/10">
               <button
+                disabled={uploadMutation.isPending}
                 onClick={() => setIsUploadOpen(false)}
                 className="px-4 py-2 border border-ink-black/15 rounded-lg text-muted hover:text-ink-black"
               >
@@ -320,15 +346,32 @@ export default function DocumentsPage() {
               </button>
               <button
                 onClick={() => uploadMutation.mutate()}
-                disabled={uploadMutation.isPending || !title.trim()}
+                disabled={uploadMutation.isPending || !title.trim() || !departmentId || !categoryId || (!selectedFile && !content.trim())}
                 className="px-5 py-2 bg-ink-black text-beige-bg font-bold rounded-lg hover:bg-accent-orange transition-colors disabled:opacity-50"
               >
                 {uploadMutation.isPending ? "Ingesting & Embedding..." : "Ingest & Vectorize"}
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
+
+      {versionDoc && <Modal label="Add document version" onClose={() => setVersionDoc(null)} busy={versionMutation.isPending}><section className="bg-white p-6 rounded-xl w-full max-w-lg space-y-4" aria-label="Add document version">
+        <h2 className="text-xl font-bold">New version: {versionDoc.title}</h2>
+        {versionMutation.isError && <p role="alert" className="text-red-700">{apiErrorMessage(versionMutation.error, "Version could not be saved.")}</p>}
+        <textarea aria-label="Version content" value={versionContent} onChange={e => setVersionContent(e.target.value)} placeholder="Updated document content" className="w-full border rounded p-3 min-h-32" />
+        <input aria-label="Version file" type="file" accept=".txt,.md,.pdf,.docx" onChange={e => setVersionFile(e.target.files?.[0] || null)} />
+        <div className="flex gap-3"><button disabled={versionMutation.isPending || (!versionFile && !versionContent.trim())} onClick={() => versionMutation.mutate()} className="bg-ink-black text-white p-3 rounded">Save Version</button><button disabled={versionMutation.isPending} onClick={() => setVersionDoc(null)}>Cancel</button></div>
+      </section></Modal>}
+      {permissionDoc && <Modal label="Document permissions" onClose={() => setPermissionDoc(null)} busy={permissionMutation.isPending}><section className="bg-white p-6 rounded-xl w-full max-w-lg space-y-4" aria-label="Document permissions">
+        <h2 className="text-xl font-bold">Permissions: {permissionDoc.title}</h2>
+        {permissionError && <p role="alert" className="text-red-700">Unable to load saved permissions. Please reopen this dialog.</p>}
+        {permissionMutation.isError && <p role="alert" className="text-red-700">{apiErrorMessage(permissionMutation.error, "Permissions could not be saved.")}</p>}
+        <label className="block">Target user<select aria-label="Target user" value={permissionUser} onChange={e => setPermissionUser(Number(e.target.value))} className="border p-2 ml-3"><option value={0}>Select a user</option>{permissionEditor?.users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
+        {(["can_view", "can_edit", "can_delete"] as const).map(key => <label className="block" key={key}><input type="checkbox" checked={permission[key]} onChange={e => setPermission({ ...permission, [key]: e.target.checked })} /> {key.replace("can_", "Allow ")}</label>)}
+        <p className="text-xs text-muted">Admin, owner and department manager access follows the platform role rules. These settings control explicit grants.</p>
+        <div className="flex gap-3"><button disabled={permissionMutation.isPending || permissionLoading || !!permissionError || permissionUser < 1} onClick={() => permissionMutation.mutate()} className="bg-ink-black text-white p-3 rounded">Save Permissions</button><button disabled={permissionMutation.isPending} onClick={() => setPermissionDoc(null)}>Cancel</button></div>
+      </section></Modal>}
     </div>
   );
 }

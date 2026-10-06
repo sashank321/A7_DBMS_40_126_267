@@ -1,15 +1,17 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
 class DocumentTagSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     tag_id: int
     tag_name: str
 
-    class Config:
-        from_attributes = True
 
 class DocumentVersionSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     version_id: int
     document_id: int
     version_number: int
@@ -17,10 +19,10 @@ class DocumentVersionSchema(BaseModel):
     uploaded_by: int
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
 
 class DocumentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     document_id: int
     title: str
     description: Optional[str] = None
@@ -40,8 +42,6 @@ class DocumentResponse(BaseModel):
     can_edit: bool = False
     can_delete: bool = False
 
-    class Config:
-        from_attributes = True
 
 class DocumentCreate(BaseModel):
     title: str
@@ -50,6 +50,7 @@ class DocumentCreate(BaseModel):
     category_id: int
     tags: List[str] = []
 
+
 class DocumentUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
@@ -57,13 +58,17 @@ class DocumentUpdate(BaseModel):
     category_id: Optional[int] = None
     tags: Optional[List[str]] = None
 
+
 class PermissionUpdate(BaseModel):
     user_id: int
     can_view: bool = True
     can_edit: bool = False
     can_delete: bool = False
 
+
 class PermissionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     permission_id: int
     document_id: int
     user_id: int
@@ -72,6 +77,3 @@ class PermissionResponse(BaseModel):
     can_view: bool
     can_edit: bool
     can_delete: bool
-
-    class Config:
-        from_attributes = True

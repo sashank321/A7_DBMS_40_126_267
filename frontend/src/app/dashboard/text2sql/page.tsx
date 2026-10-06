@@ -1,5 +1,6 @@
 "use client";
 
+import { apiErrorMessage } from "@/lib/utils";
 import React, { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -20,13 +21,13 @@ export default function Text2SQLPage() {
 
   const sqlMutation = useMutation({
     mutationFn: (q: string) => api.text2sql(q),
-    onSuccess: (data) => setSqlResult(data),
+    onSuccess: (data) => setSqlResult({ ...data, validation_error: data.is_safe ? undefined : data.explanation }),
     onError: (err: any) => {
       setSqlResult({
         natural_query: query,
         generated_sql: "",
         is_safe: false,
-        validation_error: err.response?.data?.detail || "SQL AST validation failed. Destructive statement blocked.",
+        validation_error: apiErrorMessage(err, "Unable to reach the SQL service. Please retry."),
         results: [],
         row_count: 0
       });
@@ -40,9 +41,9 @@ export default function Text2SQLPage() {
   };
 
   const sampleQueries = [
-    "Show total documents by department",
+    "How many documents are in each department?",
     "List all users and their assigned roles",
-    "Show total documents in each category",
+    "Count documents in each category",
     "Show all documents uploaded by admin"
   ];
 

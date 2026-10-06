@@ -1,17 +1,18 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StringConstraints
+from typing import Annotated
 from typing import Optional, List, Dict, Any
 
 class EntityCreate(BaseModel):
-    entity_name: str
-    entity_type: str
+    entity_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    entity_type: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
     description: Optional[str] = None
     metadata_json: Optional[Dict[str, Any]] = None
 
 class RelationshipCreate(BaseModel):
-    source_entity_id: int
-    target_entity_id: int
-    relation_type: str
-    weight: float = 1.0
+    source_entity_id: int = Field(gt=0)
+    target_entity_id: int = Field(gt=0)
+    relation_type: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+    weight: float = Field(default=1.0, ge=0, allow_inf_nan=False)
 
 class GraphNode(BaseModel):
     id: int

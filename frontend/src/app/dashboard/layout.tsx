@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth";
 import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 
@@ -9,7 +11,10 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [conferenceCode, setConferenceCode] = useState("ICDCS-2026");
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+  useEffect(() => { if (!isLoading && !isAuthenticated) router.replace("/login"); }, [isLoading, isAuthenticated, router]);
+  if (isLoading || !isAuthenticated) return <p className="p-8">Loading session…</p>;
 
   return (
     <div className="relative min-h-screen bg-beige-bg text-ink-black flex flex-col font-sans selection:bg-accent-orange/30 selection:text-ink-black">
@@ -37,16 +42,13 @@ export default function DashboardLayout({
 
       {/* Top Navbar */}
       <div className="relative z-30">
-        <Navbar
-          activeConferenceCode={conferenceCode}
-          onConferenceChange={setConferenceCode}
-        />
+        <Navbar />
       </div>
 
       {/* Main Workspace with Sidebar */}
-      <div className="relative z-10 flex flex-1 overflow-hidden">
+      <div className="relative z-10 flex flex-col md:flex-row flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 p-6 overflow-y-auto max-h-[calc(100vh-4rem)]">
+        <main key={user?.id} className="flex-1 min-w-0 p-3 sm:p-6 overflow-y-auto max-h-[calc(100vh-4rem)]">
           {children}
         </main>
       </div>

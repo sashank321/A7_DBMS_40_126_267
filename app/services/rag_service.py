@@ -29,7 +29,7 @@ class RAGService:
         # Step 3: Handle Structured Queries via Safe Text-to-SQL if applicable
         if intent == "STRUCTURED":
             sql = text2sql_service.natural_to_sql(question, user)
-            res = text2sql_service.execute_safe_query(db, sql, question)
+            res = text2sql_service.execute_safe_query(db, sql, question, user=user)
             if res["is_safe"] and res["row_count"] > 0:
                 answer = f"Found {res['row_count']} structured record(s):\n"
                 for row in res["results"][:5]:
@@ -51,7 +51,7 @@ class RAGService:
             graph_results = []
             for term in question.split():
                 if len(term) > 3:
-                    connected = graph_service.find_connected_entities(db, term)
+                    connected = graph_service.find_connected_entities(db, term, user=user)
                     if connected:
                         graph_results.extend(connected)
 
@@ -98,7 +98,7 @@ class RAGService:
             citations.append({
                 "document_id": doc_id,
                 "title": title,
-                "version_number": item["provenance"].get("version_id") or 1,
+                "version_number": item["provenance"].get("version_number") or 1,
                 "chunk_id": chunk_id,
                 "snippet": snippet[:150] + "..."
             })

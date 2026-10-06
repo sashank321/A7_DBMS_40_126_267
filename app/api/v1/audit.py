@@ -42,3 +42,8 @@ def get_audit_analytics(
         "description": "SQL Window Functions demonstrating audit log transitions and recency ranking",
         "rows": data
     }
+
+@router.get("/access-matrix")
+def get_access_matrix(db: Session = Depends(get_db), current_user: User = Depends(require_role(["Admin"]))):
+    result = db.execute(text("SELECT * FROM v_user_access_matrix ORDER BY user_id, document_id"))
+    return {"view": "v_user_access_matrix", "rows": [dict(row) for row in result.mappings()]}

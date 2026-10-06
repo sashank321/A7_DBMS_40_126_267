@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
@@ -19,6 +19,7 @@ import {
 import type { RAGResponse } from "@/types";
 
 export default function RAGCopilotPage() {
+  const { data: suggestedDocuments } = useQuery({ queryKey: ["documents-list"], queryFn: () => api.getDocuments() });
   const { user } = useAuth();
   const [question, setQuestion] = useState("");
   const [topK, setTopK] = useState(4);
@@ -38,15 +39,11 @@ export default function RAGCopilotPage() {
     ragMutation.mutate(question.trim());
   };
 
-  const sampleQuestions = [
-    "What is the annual leave entitlement and remote working hours?",
-    "How does our system handle database optimization and indexing?",
-    "What are the SOC2 security compliance requirements?",
-    "Explain the confidential System Architecture Blueprint."
-  ];
+  const sampleQuestions = (suggestedDocuments || []).slice(0, 4).map(d => `Summarize ${d.title}`);
 
   return (
     <div className="space-y-6 select-none font-sans text-ink-black pb-12 max-w-5xl mx-auto">
+      {ragMutation.isError && <p role="alert" className="text-red-700">The question could not be answered. Please check the backend and retry.</p>}
       {/* Banner */}
       <div className="border border-ink-black/10 bg-white p-6 rounded-2xl shadow-sm space-y-2">
         <div className="flex items-center gap-2 font-space text-[10px] text-muted tracking-widest uppercase">

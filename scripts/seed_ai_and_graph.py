@@ -59,10 +59,17 @@ def seed_data():
         content = SAMPLE_DOC_TEXTS.get(doc.document_id, f"# {doc.title}\n{doc.description}\nDepartment: {doc.department.department_name}\nCategory: {doc.category.category_name}")
         
         # Write to physical file if not present
-        file_path = os.path.join(settings.STORAGE_DIR, os.path.basename(doc.file_path))
+        file_path = os.path.join(settings.STORAGE_DIR, os.path.splitext(os.path.basename(doc.file_path))[0] + ".txt")
+        doc.file_name = os.path.basename(file_path)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
         doc.file_path = file_path
+        latest_version = db.query(DocumentVersion).filter(DocumentVersion.document_id == doc.document_id).order_by(DocumentVersion.version_number.desc()).first()
+        if latest_version is None:
+            latest_version = DocumentVersion(document_id=doc.document_id, version_number=1, file_path=file_path, uploaded_by=doc.uploaded_by)
+        else:
+            latest_version.file_path = file_path
+        db.add(latest_version)
         db.add(doc)
         db.commit()
 
@@ -70,7 +77,8 @@ def seed_data():
         chunk_count = chunking_service.process_and_index_document(
             db=db,
             document_id=doc.document_id,
-            text_content=content
+            text_content=content,
+            version_id=latest_version.version_id
         )
         print(f"Indexed Doc #{doc.document_id} ('{doc.title}'): {chunk_count} chunks")
 
@@ -108,6 +116,8 @@ def seed_data():
 
         # Provenance: Link document entity to document source
         graph_service.link_entity_to_source(db, doc_ent.entity_id, doc.document_id, confidence=1.0)
+        graph_service.link_entity_to_source(db, u_ent.entity_id, doc.document_id, confidence=1.0)
+        graph_service.link_entity_to_source(db, d_ent.entity_id, doc.document_id, confidence=1.0)
 
     # Technology & Project Entities
     arch_ent = graph_service.get_or_create_entity(db, "PostgreSQL", "TECHNOLOGY", "Relational Database Management System")

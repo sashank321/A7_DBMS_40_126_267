@@ -47,13 +47,16 @@ class SentenceTransformerEmbeddingProvider(BaseEmbeddingProvider):
                 SentenceTransformerEmbeddingProvider._model = SentenceTransformer(self.model_name)
             except Exception as e:
                 logger.error(f"Failed to load SentenceTransformer ({self.model_name}): {e}")
-                SentenceTransformerEmbeddingProvider._model = None
+                raise RuntimeError("The semantic embedding model could not be loaded. Install sentence-transformers and cache the configured model.") from e
 
     def get_provider_name(self) -> str:
         return f"SentenceTransformers ({self.model_name})"
 
     def get_dimensions(self) -> int:
-        return self.dim
+        get_dim = getattr(self._model, "get_embedding_dimension", None) or getattr(self._model, "get_sentence_embedding_dimension", None)
+        if get_dim is not None:
+            return int(get_dim())
+        return 384
 
     def get_embedding(self, text: str) -> List[float]:
         if not text or not text.strip():
@@ -70,22 +73,21 @@ class SentenceTransformerEmbeddingProvider(BaseEmbeddingProvider):
             )
             return [round(float(x), 6) for x in raw_vec]
 
-        # Graceful fallback if model loading failed
-        dev = DeterministicDevelopmentProvider(dim=self.dim)
-        return dev.get_embedding(text)
+        raise RuntimeError("The semantic embedding model is unavailable")
 
 
 class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
     """Production provider using OpenAI text-embedding-3-small API."""
-    def __init__(self, api_key: str, model: str = "text-embedding-3-small"):
+    def __init__(self, api_key: str, model: str = "text-embedding-3-small", dimensions: int = 1536):
         self.api_key = api_key
         self.model = model
+        self.dimensions = dimensions
 
     def get_provider_name(self) -> str:
         return f"OpenAI ({self.model})"
 
     def get_dimensions(self) -> int:
-        return 1536
+        return self.dimensions
 
     def get_embedding(self, text: str) -> List[float]:
         import requests
@@ -159,10 +161,7 @@ class LocalSemanticEmbeddingProvider(BaseEmbeddingProvider):
     """
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         self.delegate: BaseEmbeddingProvider
-        try:
-            self.delegate = SentenceTransformerEmbeddingProvider(model_name=model_name)
-        except Exception:
-            self.delegate = DeterministicDevelopmentProvider(dim=384)
+        self.delegate = SentenceTransformerEmbeddingProvider(model_name=model_name)
 
     def get_provider_name(self) -> str:
         return self.delegate.get_provider_name()
@@ -182,24 +181,15 @@ def get_embedding_provider() -> BaseEmbeddingProvider:
       - 'openai': OpenAIEmbeddingProvider (text-embedding-3-small, 1536-dim)
       - 'deterministic' / 'crc32': DeterministicDevelopmentProvider (CRC32, 128-dim)
     """
-    provider_type = os.getenv("EMBEDDING_PROVIDER", "sentence_transformers").lower().strip()
-    openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+    from app.core.config import settings
+    provider_type = os.getenv("EMBEDDING_PROVIDER", settings.EMBEDDING_PROVIDER).lower().strip()
+    openai_key = os.getenv("OPENAI_API_KEY", settings.OPENAI_API_KEY).strip()
 
     if provider_type == "openai" and openai_key:
-        return OpenAIEmbeddingProvider(api_key=openai_key)
+        return OpenAIEmbeddingProvider(api_key=openai_key, model=settings.OPENAI_EMBEDDING_MODEL, dimensions=settings.OPENAI_EMBEDDING_DIM)
     elif provider_type in ("deterministic", "crc32"):
-        return DeterministicDevelopmentProvider(dim=128)
+        return DeterministicDevelopmentProvider(dim=int(os.getenv("DETERMINISTIC_EMBEDDING_DIM", settings.DETERMINISTIC_EMBEDDING_DIM)))
     elif provider_type in ("sentence_transformers", "local", "local_semantic"):
-        try:
-            return SentenceTransformerEmbeddingProvider(
-                model_name=os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-            )
-        except Exception as err:
-            logger.warning(f"Failed initializing SentenceTransformer: {err}. Falling back to DeterministicDevelopmentProvider.")
-            return DeterministicDevelopmentProvider(dim=384)
-    else:
-        # Default to sentence_transformers with safe fallback
-        try:
-            return SentenceTransformerEmbeddingProvider()
-        except Exception:
-            return DeterministicDevelopmentProvider(dim=128)
+        from app.core.config import settings
+        return SentenceTransformerEmbeddingProvider(model_name=os.getenv("EMBEDDING_MODEL", settings.EMBEDDING_MODEL))
+    raise ValueError(f"Unsupported or unconfigured embedding provider: {provider_type}")

@@ -8,7 +8,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Sashank@123}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-knowledgesphere_db}
     ports:
       - "5432:5432"
@@ -18,12 +18,29 @@ services:
       - ./database/sql/college/02_sample_data.sql:/docker-entrypoint-initdb.d/02_sample_data.sql
       - ./database/sql/extensions/01_advanced_features.sql:/docker-entrypoint-initdb.d/03_advanced_features.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d knowledgesphere_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # 2. NoSQL Document Store for high-velocity telemetry & reviews
+  # 2. PostgreSQL Administration UI
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: knowledgesphere_pgadmin
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@knowledgesphere.ai}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin123}
+      PGADMIN_LISTEN_PORT: 80
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  # 3. NoSQL Document Store for high-velocity telemetry & reviews
   mongodb:
     image: mongo:7.0
     container_name: knowledgesphere_mongodb
@@ -38,7 +55,22 @@ services:
       timeout: 5s
       retries: 5
 
-  # 3. KnowledgeSphere AI FastAPI Backend
+  # 4. Cache and transient application state
+  redis:
+    image: redis:7-alpine
+    container_name: knowledgesphere_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # 5. KnowledgeSphere AI FastAPI Backend
   backend:
     build: .
     container_name: knowledgesphere_backend
@@ -48,21 +80,37 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "8000:8000"
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Sashank@123}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-knowledgesphere_db}
       MONGO_URI: mongodb://mongodb:27017/
       MONGO_DB: knowledgesphere_nosql
-      JWT_SECRET: ${JWT_SECRET:-09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       STORAGE_DIR: /app/storage/documents
     volumes:
       - ./storage:/app/storage
 
+  frontend:
+    build: ./frontend
+    container_name: knowledgesphere_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:8000
+
 volumes:
   pgdata:
   mongodata:
+  redisdata:
+  pgadmin_data:

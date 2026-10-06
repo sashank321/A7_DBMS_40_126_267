@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { api, apiClient } from "@/lib/api";
+import { api } from "@/lib/api";
 import { Server, Activity, ShieldCheck, AlertCircle } from "lucide-react";
 
 type HealthStatus = "connected" | "connecting" | "failed";
@@ -9,17 +9,18 @@ type HealthStatus = "connected" | "connecting" | "failed";
 export function BackendStatusPill() {
   const [status, setStatus] = useState<HealthStatus>("connecting");
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
-  const [backendType, setBackendType] = useState<string>("Spring Boot 3 / DSA Engine");
+  const [backendType, setBackendType] = useState<string>("FastAPI / PostgreSQL / MongoDB");
 
   const checkHealth = async () => {
     const startTime = performance.now();
     try {
       // Test basic endpoint
-      await apiClient.get("/conferences", { timeout: 15000 });
+      const health = await api.getHealth();
+      if (health.status !== "OPERATIONAL") throw new Error("Service degraded");
       const elapsed = Math.round(performance.now() - startTime);
       setLatencyMs(elapsed);
       setStatus("connected");
-      setBackendType("Spring Boot 3 Engine");
+      setBackendType("FastAPI / PostgreSQL / MongoDB");
     } catch (err: any) {
       // If error occurs, check if it's fallback or offline
       setStatus("failed");
@@ -93,7 +94,7 @@ export function BackendStatusPill() {
         <div className="space-y-1 text-[10px] font-mono text-muted-foreground">
           <div>Engine: <span className="text-white">{backendType}</span></div>
           <div>Latency: <span className="text-white">{latencyMs !== null ? `${latencyMs} ms` : "N/A"}</span></div>
-          <div>Protocol: <span className="text-white">Pure DSA Max-Flow (FF·EK·Dinic)</span></div>
+          <div>Checks: <span className="text-white">PostgreSQL, MongoDB, storage</span></div>
         </div>
       </div>
     </div>

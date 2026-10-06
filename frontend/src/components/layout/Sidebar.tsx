@@ -1,5 +1,6 @@
 "use client";
 
+import { usePlatform, useDemoAccounts } from "@/lib/platform";
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -18,6 +19,7 @@ import {
 import { useAuth } from "@/lib/auth";
 
 export function Sidebar() {
+  const platform = usePlatform();
   const { user } = useAuth();
   const isAdmin = user?.role === "Admin" || user?.role === "SUPER_ADMIN";
   const pathname = usePathname();
@@ -26,7 +28,7 @@ export function Sidebar() {
     { label: "System Overview", href: "/dashboard", icon: LayoutDashboard },
     { label: "Document Explorer", href: "/dashboard/documents", icon: FileText },
     { label: "Grounded RAG Copilot", href: "/dashboard/rag", icon: Sparkles, badge: "Pre-RBAC" },
-    { label: "Hybrid Vector Search", href: "/dashboard/search", icon: Search, badge: "384-dim" },
+    { label: "Hybrid Vector Search", href: "/dashboard/search", icon: Search, badge: platform.dimensions ? `${platform.dimensions}-dim` : "Vectors" },
     { label: "Safe Text-to-SQL", href: "/dashboard/text2sql", icon: Terminal, badge: "AST Safe" },
     { label: "Knowledge Graph", href: "/dashboard/graph-view", icon: Network },
     { label: "MongoDB Telemetry", href: "/dashboard/telemetry", icon: Activity, badge: "NoSQL" },
@@ -34,14 +36,14 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 border-r border-ink-black/10 bg-beige-bg/80 backdrop-blur-md flex flex-col justify-between p-4 h-[calc(100vh-4rem)] sticky top-16 select-none font-sans text-ink-black">
-      <div className="space-y-6 mt-2">
+    <aside className="w-full md:w-64 shrink-0 border-r border-ink-black/10 bg-beige-bg/80 backdrop-blur-md flex flex-col justify-between p-2 md:p-4 h-auto md:h-[calc(100vh-4rem)] md:sticky md:top-16 select-none font-sans text-ink-black">
+      <div className="space-y-6 md:mt-2">
         <div>
-          <div className="mb-3 flex items-center gap-2 font-space text-[10px] uppercase tracking-[0.2em] text-muted pl-2">
+          <div className="hidden md:flex mb-3 items-center gap-2 font-space text-[10px] uppercase tracking-[0.2em] text-muted pl-2">
             <span className="h-[4px] w-[4px] bg-accent-orange"></span>
             <span>Platform Modules</span>
           </div>
-          <nav className="space-y-1">
+          <nav aria-label="Platform modules" className="flex md:block gap-1 overflow-x-auto md:overflow-visible md:space-y-1">
             {coreNav.map((item) => {
               const active = pathname === item.href;
               const Icon = item.icon;
@@ -49,7 +51,7 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center justify-between px-3 py-2.5 text-[11px] font-space tracking-wider uppercase transition-all rounded ${
+                  className={`flex shrink-0 md:shrink items-center justify-between px-3 py-2.5 text-[11px] font-space tracking-wider uppercase transition-all rounded ${
                     active
                       ? "bg-ink-black text-beige-bg font-bold border-l-2 border-accent-orange shadow-sm"
                       : "text-muted hover:bg-ink-black/5 hover:text-ink-black border-l-2 border-transparent"
@@ -73,35 +75,35 @@ export function Sidebar() {
         </div>
 
         {/* Database & Architecture Summary Card */}
-        <div className="p-3 border border-ink-black/10 bg-white/60 rounded-xl space-y-2 text-xs font-space">
+        <div className="hidden md:block p-3 border border-ink-black/10 bg-white/60 rounded-xl space-y-2 text-xs font-space">
           <div className="flex items-center gap-2 text-accent-orange font-bold text-[10px] tracking-wider uppercase">
             <Database className="h-3.5 w-3.5" />
             <span>Polyglot Architecture</span>
           </div>
           <div className="space-y-1 text-[10px] text-muted">
             <div className="flex justify-between">
-              <span>PostgreSQL 18.4:</span>
+              <span>{platform.pgLabel}:</span>
               <span className="font-bold text-ink-black">3NF ACID Core</span>
             </div>
             <div className="flex justify-between">
-              <span>MongoDB 8.x:</span>
+              <span>{platform.mongoLabel}:</span>
               <span className="font-bold text-ink-black">Aggregation Feeds</span>
             </div>
             <div className="flex justify-between">
               <span>Embeddings:</span>
-              <span className="font-bold text-accent-orange">MiniLM 384-dim</span>
+              <span className="font-bold text-accent-orange">{platform.embeddingLabel}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* User Context Footer */}
-      <div className="border-t border-ink-black/10 pt-3 text-[10px] font-space text-muted flex items-center justify-between">
+      <div className="hidden md:flex border-t border-ink-black/10 pt-3 text-[10px] font-space text-muted flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Lock className="h-3 w-3 text-accent-orange" />
-          <span>RBAC: <strong className="text-ink-black">{user?.role || "Admin"}</strong></span>
+          <span>RBAC: <strong className="text-ink-black">{user?.role || "Signed out"}</strong></span>
         </div>
-        <span className="px-1.5 py-0.5 bg-green-500/10 border border-green-500/30 text-green-700 font-bold rounded">LIVE</span>
+        <span className="px-1.5 py-0.5 bg-green-500/10 border border-green-500/30 text-green-700 font-bold rounded">RBAC</span>
       </div>
     </aside>
   );

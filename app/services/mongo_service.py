@@ -66,7 +66,7 @@ class MongoService:
             })
         return results
 
-    def get_telemetry_aggregation(self) -> Dict[str, Any]:
+    def get_telemetry_aggregation(self, user_id: Optional[int] = None, accessible_doc_ids: Optional[List[int]] = None) -> Dict[str, Any]:
         """
         Executes real MongoDB Aggregation Pipelines:
         1. Action Type distribution using $group
@@ -79,6 +79,9 @@ class MongoService:
             {"$group": {"_id": "$action_type", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}}
         ]
+        activity_filter = {} if user_id is None else {"user_id": user_id}
+        review_filter = {} if accessible_doc_ids is None else {"document_id": {"$in": accessible_doc_ids}}
+        pipeline_actions.insert(0, {"$match": activity_filter})
         action_results = list(db.activity_logs.aggregate(pipeline_actions))
         action_dist = {item["_id"]: item["count"] for item in action_results if item.get("_id")}
 
@@ -94,6 +97,7 @@ class MongoService:
             {"$sort": {"review_count": -1, "average_rating": -1}},
             {"$limit": 10}
         ]
+        pipeline_reviews.insert(0, {"$match": review_filter})
         review_aggregates = list(db.document_reviews.aggregate(pipeline_reviews))
         doc_reviews_summary = [
             {
@@ -104,10 +108,22 @@ class MongoService:
             for item in review_aggregates
         ]
 
-        total_activities = db.activity_logs.count_documents({})
+        total_activities = db.activity_logs.count_documents(activity_filter)
+        total_reviews = db.document_reviews.count_documents(review_filter)
+        averages = list(db.document_reviews.aggregate([{"$match": review_filter}, {"$group": {"_id": None, "average": {"$avg": "$rating"}}}]))
+        ratings = list(db.document_reviews.aggregate([{"$match": review_filter}, {"$group": {"_id": "$rating", "count": {"$sum": 1}}}]))
+        recent = []
+        for activity in db.activity_logs.find(activity_filter).sort("timestamp", -1).limit(20):
+            recent.append({"id": str(activity["_id"]), "action_type": activity["action_type"], "user_id": activity["user_id"], "timestamp": activity["timestamp"].isoformat()})
 
         return {
             "total_activities": total_activities,
+            "total_reviews": total_reviews,
+            "average_rating": round(float(averages[0]["average"]), 2) if averages else 0.0,
+            "ratings_distribution": {str(r["_id"]): r["count"] for r in ratings},
+            "action_distribution": action_dist,
+            "recent_activities": recent,
+            "status": "HEALTHY",
             "action_type_distribution": action_dist,
             "top_reviewed_documents": doc_reviews_summary,
             "average_ratings_by_document": doc_reviews_summary

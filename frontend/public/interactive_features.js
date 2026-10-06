@@ -279,11 +279,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const typingSpan = document.querySelector('.typing-container span:first-child');
   if (typingSpan) {
     const commands = [
-      "allocflow build-network --papers 120 --reviewers 45",
-      "allocflow run dinic --verify-coi --max-load 4",
-      "allocflow verify-invariants --ff --ek --dinic",
-      "allocflow generate-proofs --sha256",
-      "allocflow export-assignments --format json"
+      "knowledgesphere list-documents",
+      "knowledgesphere search --authorized",
+      "knowledgesphere health",
+      "knowledgesphere query --with-citations",
+      "knowledgesphere export-results --format json"
     ];
     let cmdIdx = 0;
     let charIdx = 0;
@@ -311,27 +311,6 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(typeLoop, speed);
     }
     setTimeout(typeLoop, 600);
-  }
-
-  // ==========================================
-  // 4. 3D Computer Mouse Parallax Movement
-  // ==========================================
-  const scene = document.querySelector('.scene');
-  const productCol = document.querySelector('.product-col');
-  if (scene && productCol) {
-    productCol.addEventListener('mousemove', (e) => {
-      const rect = productCol.getBoundingClientRect();
-      const x = (e.clientX - rect.left - rect.width / 2) / 18;
-      const y = (e.clientY - rect.top - rect.height / 2) / 18;
-      scene.style.transform = `rotateY(${x}deg) rotateX(${-y}deg)`;
-    });
-    productCol.addEventListener('mouseleave', () => {
-      scene.style.transform = `rotateY(0deg) rotateX(0deg)`;
-      scene.style.transition = 'transform 0.5s ease';
-    });
-    productCol.addEventListener('mouseenter', () => {
-      scene.style.transition = 'none';
-    });
   }
 
   // ==========================================

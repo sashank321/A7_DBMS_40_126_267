@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from app.models.postgres_models import Document, DocumentChunk, DocumentEmbedding, User
+from app.models.postgres_models import Document, DocumentChunk, DocumentEmbedding, DocumentVersion, User
 from app.services.embedding_service import embedding_service
 from app.services.document_service import document_service
 from app.core.config import settings
@@ -61,6 +61,7 @@ class SearchService:
                         "title": doc.title,
                         "file_name": doc.file_name,
                         "version_id": chunk.version_id,
+                        "version_number": db.get(DocumentVersion, chunk.version_id).version_number if chunk.version_id else 1,
                         "department_id": doc.department_id,
                         "category_id": doc.category_id,
                         "chunk_number": chunk.chunk_number
@@ -123,6 +124,8 @@ class SearchService:
                     "provenance": {
                         "document_id": doc.document_id,
                         "title": doc.title,
+                        "version_id": first_chunk.version_id if first_chunk else None,
+                        "version_number": db.get(DocumentVersion, first_chunk.version_id).version_number if first_chunk and first_chunk.version_id else 1,
                         "department": doc.department.department_name,
                         "category": doc.category.category_name
                     }
@@ -151,8 +154,12 @@ class SearchService:
         rrf_scores: Dict[int, float] = {}
         items_by_doc: Dict[int, Dict[str, Any]] = {}
 
+        # Retain the best matching chunk and count each document once per channel.
+        semantic_docs = {}
+        for item in semantic_results:
+            semantic_docs.setdefault(item["document_id"], item)
         # 1. Score semantic results
-        for rank, item in enumerate(semantic_results, 1):
+        for rank, item in enumerate(semantic_docs.values(), 1):
             doc_id = item["document_id"]
             rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + (1.0 / (60.0 + rank))
             items_by_doc[doc_id] = item

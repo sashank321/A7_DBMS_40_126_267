@@ -59,6 +59,11 @@ def create_user(
     if existing:
         raise HTTPException(status_code=400, detail="User with this email already exists")
 
+    if not db.get(Role, req.role_id) or not db.get(Department, req.department_id):
+        raise HTTPException(status_code=422, detail="Unknown role or department")
+    if len(req.password.encode("utf-8")) > 72:
+        raise HTTPException(status_code=422, detail="Password must be at most 72 UTF-8 bytes")
+
     new_user = User(
         name=req.name,
         email=req.email,

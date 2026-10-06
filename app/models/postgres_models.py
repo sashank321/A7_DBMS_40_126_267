@@ -237,3 +237,17 @@ class EntitySource(Base):
     entity = relationship("KnowledgeEntity", back_populates="sources")
     document = relationship("Document", back_populates="entity_sources")
     chunk = relationship("DocumentChunk", back_populates="entity_sources")
+
+
+class UserOTP(Base):
+    __tablename__ = "user_otps"
+
+    otp_id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(150), nullable=False, index=True)
+    otp_code = Column(String(6), nullable=False)
+    purpose = Column(String(50), default="login", nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    is_used = Column(Boolean, default=False, nullable=False)
+    attempts = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+

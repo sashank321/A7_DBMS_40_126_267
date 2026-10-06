@@ -4,10 +4,11 @@ export interface KnowledgeSphereUser {
   user_id: number;
   email: string;
   name: string;
-  role: string;
+  role_name: string;
+  role_id: number;
   department_id?: number;
   department_name?: string;
-  is_active: boolean;
+  created_at: string;
 }
 
 export interface DocumentItem {
@@ -84,6 +85,9 @@ export interface Text2SQLResponse {
   results: Record<string, any>[];
   row_count: number;
   columns?: string[];
+  status?: string;
+  explanation?: string;
+  execution_time_ms?: number;
 }
 
 export interface KnowledgeGraphNode {
@@ -102,8 +106,10 @@ export interface KnowledgeGraphEdge {
 }
 
 export interface GraphResponse {
-  entities: KnowledgeGraphNode[];
-  relationships: KnowledgeGraphEdge[];
+  nodes: KnowledgeGraphNode[];
+  edges: { source: number; target: number; relation: string; weight: number }[];
+  total_nodes: number;
+  total_edges: number;
 }
 
 export interface MongoTelemetry {
@@ -117,7 +123,7 @@ export interface MongoTelemetry {
     user_id: number;
     action_type: string;
     timestamp: string;
-    metadata: Record<string, any>;
+    metadata?: Record<string, any>;
   }>;
 }
 

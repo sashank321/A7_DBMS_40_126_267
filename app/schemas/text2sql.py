@@ -1,11 +1,12 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from app.schemas.validation import QueryText
 from typing import Optional, List, Dict, Any
 
 class Text2SQLRequest(BaseModel):
-    natural_query: str
+    natural_query: QueryText
 
 class Text2SQLResponse(BaseModel):
-    natural_query: str
+    natural_query: QueryText
     generated_sql: str
     is_safe: bool
     status: str

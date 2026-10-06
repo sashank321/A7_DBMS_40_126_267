@@ -72,3 +72,8 @@ dbms project/
 *.pdf
 
 
+
+# Local SQLite experiments
+rbac.db
+*.db-journal
+redis_experiment/

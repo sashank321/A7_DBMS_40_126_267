@@ -1,117 +1,90 @@
 "use client";
-
 import React, { createContext, useContext, useEffect, useState } from "react";
-import type { User, UserRole } from "@/types";
+import { useQueryClient } from "@tanstack/react-query";
+import type { User } from "@/types";
 import { api } from "./api";
 
 interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  isLoading: boolean;
-  login: (email: string, pass: string) => Promise<void>;
-  quickLogin: (role: string) => Promise<void>;
-  logout: () => void;
-  isAuthenticated: boolean;
+  user: User | null; token: string | null; isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  requestOTP: (email: string, password: string) => Promise<{ status: string; message: string; email: string; expires_in_seconds: number; dev_otp?: string }>;
+  verifyOTP: (email: string, otp: string) => Promise<void>;
+  resendOTP: (email: string) => Promise<{ status: string; message: string; email: string; expires_in_seconds: number; dev_otp?: string }>;
+  quickLogin: (role: string) => Promise<void>; logout: () => void; isAuthenticated: boolean;
 }
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const KNOWLEDGESPHERE_CREDENTIALS: Record<string, { email: string; pass: string; label: string; role: string }> = {
-  Admin: { email: "alice.admin@knowledgesphere.ai", pass: "password123", label: "Admin", role: "Admin" },
-  Manager: { email: "bob.hr@knowledgesphere.ai", pass: "password123", label: "Manager", role: "Manager" },
-  Employee: { email: "hannah.hr@knowledgesphere.ai", pass: "password123", label: "Employee", role: "Employee" },
-  SUPER_ADMIN: { email: "alice.admin@knowledgesphere.ai", pass: "password123", label: "Admin", role: "Admin" },
-  CONFERENCE_ADMIN: { email: "bob.hr@knowledgesphere.ai", pass: "password123", label: "Manager", role: "Manager" },
-  REVIEWER: { email: "diana.eng@knowledgesphere.ai", pass: "password123", label: "Employee (Eng)", role: "Employee" },
-  AUTHOR: { email: "hannah.hr@knowledgesphere.ai", pass: "password123", label: "Employee (HR)", role: "Employee" },
-};
+
+const asUser = (data: any): User => ({ id: String(data.user_id), email: data.email, fullName: data.name, role: data.role_name || data.role, enabled: true, departmentId: data.department_id } as User);
+const clearStorage = () => ["knowledgesphere_token", "knowledgesphere_user", "allocflow_token", "allocflow_user"].forEach(k => localStorage.removeItem(k));
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
+  const queryClient = useQueryClient();
   useEffect(() => {
-    const initSession = async () => {
-      const savedToken = localStorage.getItem("knowledgesphere_token") || localStorage.getItem("allocflow_token");
-      const savedUser = localStorage.getItem("knowledgesphere_user") || localStorage.getItem("allocflow_user");
-
-      if (savedToken && savedUser) {
-        try {
-          const parsed = JSON.parse(savedUser);
-          setToken(savedToken);
-          setUser({
-            id: String(parsed.user_id || parsed.id || 1),
-            email: parsed.email,
-            fullName: parsed.name || parsed.fullName || "Alice Admin",
-            role: (parsed.role as any) || "Admin",
-            enabled: true
-          });
-          setIsLoading(false);
-          return;
-        } catch {
-          localStorage.removeItem("knowledgesphere_token");
-          localStorage.removeItem("knowledgesphere_user");
-        }
-      }
-
-      // Default auto-login as Alice (Admin)
+    let active = true;
+    const initialize = async () => {
+      const saved = localStorage.getItem("knowledgesphere_token");
       try {
-        const res = await api.knowledgesphereLogin("alice.admin@knowledgesphere.ai", "password123");
-        setToken(res.access_token);
-        setUser({
-          id: String(res.user_id),
-          email: res.email,
-          fullName: res.name,
-          role: res.role as any,
-          enabled: true
-        });
-      } catch (err) {
-        console.warn("Default KnowledgeSphere auto-login failed", err);
-      } finally {
-        setIsLoading(false);
+        if (saved) {
+          const profile = await api.getCurrentUser();
+          if (active) { setToken(saved); setUser(asUser(profile)); }
+        }
+      } catch { clearStorage(); }
+      finally { if (active) setIsLoading(false); }
+    };
+    initialize();
+    const expired = () => { setToken(null); setUser(null); queryClient.clear(); };
+    const storageChanged = (event: StorageEvent) => {
+      if (event.key === "knowledgesphere_token" || event.key === null) {
+        queryClient.clear(); window.location.reload();
       }
     };
+    window.addEventListener("storage", storageChanged);
+    window.addEventListener("knowledgesphere:unauthorized", expired);
+    return () => { active = false; window.removeEventListener("storage", storageChanged); window.removeEventListener("knowledgesphere:unauthorized", expired); };
+  }, [queryClient]);
 
-    initSession();
-  }, []);
+  const requestOTP = async (email: string, password: string) => {
+    return await api.requestOTP(email, password);
+  };
 
-  const login = async (email: string, pass: string) => {
+  const verifyOTP = async (email: string, otp: string) => {
     setIsLoading(true);
     try {
-      const res = await api.knowledgesphereLogin(email, pass);
-      setToken(res.access_token);
-      const userObj: User = {
-        id: String(res.user_id),
-        email: res.email,
-        fullName: res.name,
-        role: res.role as any,
-        enabled: true
-      };
-      setUser(userObj);
-      localStorage.setItem("knowledgesphere_token", res.access_token);
-      localStorage.setItem("knowledgesphere_user", JSON.stringify(res));
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      const result = await api.verifyOTP(email, otp);
+      setToken(result.access_token);
+      setUser(asUser(result));
     } finally {
       setIsLoading(false);
     }
   };
 
+  const resendOTP = async (email: string) => {
+    return await api.resendOTP(email);
+  };
+
+  const login = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      const result = await api.knowledgesphereLogin(email, password);
+      setToken(result.access_token); setUser(asUser(result));
+    } finally { setIsLoading(false); }
+  };
   const quickLogin = async (role: string) => {
-    const creds = KNOWLEDGESPHERE_CREDENTIALS[role];
-    if (creds) {
-      await login(creds.email, creds.pass);
-    }
+    const credentials = (await api.getDemoAccounts()).find(account => account.role === role);
+    if (!credentials) throw new Error("This demo role is unavailable");
+    const password = process.env.NEXT_PUBLIC_DEMO_PASSWORD;
+    if (!password) throw new Error("Demo access is not configured");
+    await login(credentials.email, password);
   };
-
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem("knowledgesphere_token");
-    localStorage.removeItem("knowledgesphere_user");
-    localStorage.removeItem("allocflow_token");
-    localStorage.removeItem("allocflow_user");
-  };
-
+  const logout = () => { clearStorage(); setToken(null); setUser(null); queryClient.clear(); };
   return (
     <AuthContext.Provider
       value={{
@@ -119,9 +92,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         isLoading,
         login,
+        requestOTP,
+        verifyOTP,
+        resendOTP,
         quickLogin,
         logout,
-        isAuthenticated: !!token,
+        isAuthenticated: !!token
       }}
     >
       {children}
@@ -131,8 +107,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }

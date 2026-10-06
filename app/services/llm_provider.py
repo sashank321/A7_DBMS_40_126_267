@@ -153,7 +153,7 @@ class LocalGroundedSynthesizer(BaseLLMProvider):
     Transparent Extractive Grounded Synthesizer.
     Used when no external or local generative LLM is available.
     Compiles exact, verified passages directly from authorized document chunks.
-    Guarantees zero hallucinations and 100% provenance traceability.
+    Returns extracted source content with provenance.
     """
     def get_provider_name(self) -> str:
         return "Local Grounded Synthesizer (Extractive / Deterministic)"
@@ -167,7 +167,7 @@ class LocalGroundedSynthesizer(BaseLLMProvider):
         answer_text = (
             f"Based on authorized enterprise documents:\n\n"
             + "\n\n".join(answer_parts)
-            + f"\n\n[Note: Synthesized via Local Grounded Extractive Synthesizer (Zero Hallucination). "
+            + f"\n\n[Note: Synthesized via Local Grounded Extractive Synthesizer. "
               f"Configure OPENAI_API_KEY or start Ollama at localhost:11434 for neural generative answers.]"
         )
         return {

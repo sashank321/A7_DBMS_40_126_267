@@ -1,138 +1,86 @@
 "use client";
 
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 
 export function HeroComputerInteractive() {
   useEffect(() => {
-    let animFrame: number;
-    let isDragging = false;
-    let startX = 0;
-    let startY = 0;
-    let currentRotX = 5;
-    let currentRotY = -15;
-    let targetRotX = 5;
-    let targetRotY = -15;
+    const scene = document.querySelector<HTMLElement>(".hero-main-grid .scene");
+    const hero = document.querySelector<HTMLElement>(".hero-main-grid");
+    const column = document.querySelector<HTMLElement>(".hero-main-grid .product-col");
+    if (!scene || !hero || !column) return;
 
-    const findElements = () => {
-      const scene = document.querySelector(".scene") as HTMLElement | null;
-      const productCol = document.querySelector(".product-col") as HTMLElement | null;
-      const keys = document.querySelectorAll(".keyboard-assembly .key");
-      const crtWindow = document.querySelector(".crt-window") as HTMLElement | null;
-      const typingSpan = document.querySelector(".typing-container span:first-child") as HTMLElement | null;
-
-      if (!scene || !productCol) {
-        return false;
-      }
-
-      // 1. Enable 3D Parallax & Smooth Drag to Rotate
-      const handleMouseMove = (e: MouseEvent) => {
-        const rect = productCol.getBoundingClientRect();
-        const normX = (e.clientX - rect.left - rect.width / 2) / (rect.width / 2);
-        const normY = (e.clientY - rect.top - rect.height / 2) / (rect.height / 2);
-
-        if (isDragging) {
-          const deltaX = e.clientX - startX;
-          const deltaY = e.clientY - startY;
-          targetRotY = currentRotY + deltaX * 0.25;
-          targetRotX = Math.max(-30, Math.min(30, currentRotX - deltaY * 0.25));
-        } else {
-          // Dynamic tilt following the mouse
-          targetRotY = normX * 22;
-          targetRotX = -normY * 18;
-        }
-      };
-
-      const handleMouseDown = (e: MouseEvent) => {
-        isDragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        currentRotX = targetRotX;
-        currentRotY = targetRotY;
-        scene.style.cursor = "grabbing";
-      };
-
-      const handleMouseUp = () => {
-        if (isDragging) {
-          isDragging = false;
-          currentRotX = targetRotX;
-          currentRotY = targetRotY;
-          scene.style.cursor = "grab";
-        }
-      };
-
-      const handleMouseLeave = () => {
-        isDragging = false;
-        targetRotX = 4;
-        targetRotY = -10;
-        scene.style.cursor = "grab";
-      };
-
-      // Animation loop for fluid inertia rotation
-      const updatePhysics = () => {
-        currentRotX += (targetRotX - currentRotX) * 0.12;
-        currentRotY += (targetRotY - currentRotY) * 0.12;
-        scene.style.transform = `scale(0.88) rotateX(${currentRotX.toFixed(2)}deg) rotateY(${currentRotY.toFixed(2)}deg)`;
-        animFrame = requestAnimationFrame(updatePhysics);
-      };
-
-      productCol.addEventListener("mousemove", handleMouseMove);
-      productCol.addEventListener("mousedown", handleMouseDown);
-      window.addEventListener("mouseup", handleMouseUp);
-      productCol.addEventListener("mouseleave", handleMouseLeave);
-      animFrame = requestAnimationFrame(updatePhysics);
-
-      // 2. Interactive Keyboard Key Press Sounds/Visual Feedback
-      const sampleQueries = [
-        "> SELECT * FROM v_document_overview LIMIT 5;",
-        "> run-vector-search --dim 384 --top-k 4",
-        "> audit-rbac --role Admin --verify-token",
-        "> mongodb.telemetry.aggregate([ { $group: { _id: '$action' } } ])",
-        "> explain-knowledge-graph --depth 2"
-      ];
-      let queryIdx = 0;
-
-      keys.forEach((keyEl, idx) => {
-        const key = keyEl as HTMLElement;
-        key.addEventListener("click", (e) => {
-          e.stopPropagation();
-          key.classList.add("pressed");
-          setTimeout(() => key.classList.remove("pressed"), 180);
-
-          // Type custom command into screen on click
-          if (typingSpan) {
-            queryIdx = (queryIdx + 1) % sampleQueries.length;
-            typingSpan.textContent = sampleQueries[queryIdx];
-          }
-        });
-      });
-
-      // 3. Click CRT Window to execute test query in terminal
-      if (crtWindow) {
-        crtWindow.addEventListener("click", () => {
-          if (typingSpan) {
-            queryIdx = (queryIdx + 1) % sampleQueries.length;
-            typingSpan.textContent = sampleQueries[queryIdx];
-          }
-        });
-      }
-
-      return true;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const restingX = 5;
+    const restingY = -12;
+    let currentX = restingX, currentY = restingY;
+    let targetX = restingX, targetY = restingY;
+    let frame: number | null = null;
+    let drag: { id: number; x: number; y: number; rotationX: number; rotationY: number } | null = null;
+    const clamp = (value: number, limit: number) => Math.max(-limit, Math.min(limit, value));
+    const paint = () => {
+      scene.style.setProperty("--hero-rotate-x", `${currentX.toFixed(3)}deg`);
+      scene.style.setProperty("--hero-rotate-y", `${currentY.toFixed(3)}deg`);
     };
-
-    // Retry finding elements until DOM is hydrated
-    let attempts = 0;
-    const interval = setInterval(() => {
-      attempts++;
-      if (findElements() || attempts > 20) {
-        clearInterval(interval);
+    const animate = () => {
+      currentX += (targetX - currentX) * 0.14;
+      currentY += (targetY - currentY) * 0.14;
+      paint();
+      if (Math.abs(targetX - currentX) + Math.abs(targetY - currentY) > 0.01) {
+        frame = requestAnimationFrame(animate);
+      } else {
+        currentX = targetX; currentY = targetY; paint(); frame = null;
       }
-    }, 150);
-
+    };
+    const moveTo = (x: number, y: number) => {
+      if (reducedMotion.matches) return;
+      targetX = x; targetY = y;
+      if (frame === null) frame = requestAnimationFrame(animate);
+    };
+    const move = (event: PointerEvent) => {
+      if (drag) {
+        if (event.pointerId !== drag.id) return;
+        moveTo(clamp(drag.rotationX - (event.clientY - drag.y) * 0.15, 24),
+               clamp(drag.rotationY + (event.clientX - drag.x) * 0.15, 36));
+        return;
+      }
+      if (event.pointerType !== "mouse") return;
+      const rect = column.getBoundingClientRect();
+      const x = clamp((event.clientX - rect.left - rect.width / 2) / (rect.width / 2), 1);
+      const y = clamp((event.clientY - rect.top - rect.height / 2) / (rect.height / 2), 1);
+      moveTo(restingX - y * 10, restingY + x * 16);
+    };
+    const down = (event: PointerEvent) => {
+      if (event.button !== 0 || reducedMotion.matches) return;
+      drag = { id: event.pointerId, x: event.clientX, y: event.clientY, rotationX: currentX, rotationY: currentY };
+      scene.setPointerCapture(event.pointerId);
+      scene.style.cursor = "grabbing";
+    };
+    const up = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      drag = null;
+      if (scene.hasPointerCapture(event.pointerId)) scene.releasePointerCapture(event.pointerId);
+      scene.style.cursor = "grab";
+    };
+    const reset = () => { if (!drag) moveTo(restingX, restingY); };
+    paint();
+    hero.addEventListener("pointermove", move);
+    hero.addEventListener("pointerleave", reset);
+    scene.addEventListener("pointerdown", down);
+    scene.addEventListener("pointerup", up);
+    scene.addEventListener("pointercancel", up);
+    scene.addEventListener("lostpointercapture", up);
     return () => {
-      clearInterval(interval);
-      cancelAnimationFrame(animFrame);
+      if (frame !== null) cancelAnimationFrame(frame);
+      hero.removeEventListener("pointermove", move);
+      hero.removeEventListener("pointerleave", reset);
+      scene.removeEventListener("pointerdown", down);
+      scene.removeEventListener("pointerup", up);
+      scene.removeEventListener("pointercancel", up);
+      scene.removeEventListener("lostpointercapture", up);
+      scene.style.removeProperty("--hero-rotate-x");
+      scene.style.removeProperty("--hero-rotate-y");
+      scene.style.removeProperty("cursor");
     };
   }, []);
-
   return null;
 }

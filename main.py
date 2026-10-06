@@ -1,81 +1,66 @@
-from datetime import datetime, timedelta, timezone
-from typing import Annotated
+import os
+from datetime import datetime, timedelta
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import JWTError, jwt
+
+from sqlalchemy import create_engine, Column, Integer, String, Float
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
+
 from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr
-from sqlalchemy import String, create_engine, select
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session
-from sqlalchemy.orm import mapped_column, sessionmaker
+from jose import jwt, JWTError
 
 
-# --------------------------------------------------
-# 1. FastAPI application
-# --------------------------------------------------
+# 1. FASTAPI APPLICATION
 
-app = FastAPI(title="JWT Authentication Application")
+app = FastAPI(title="FastAPI RBAC Demo")
 
+# 2. DATABASE CONFIGURATION
 
-# --------------------------------------------------
-# 2. PostgreSQL database connection
-# --------------------------------------------------
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./rbac.db")
 
-DATABASE_URL = (
-    "postgresql+psycopg2://postgres:Sashank%40123@localhost:5432/kldb"
-)
+engine_kwargs = {}
+if DATABASE_URL.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 
 SessionLocal = sessionmaker(
-    bind=engine,
     autocommit=False,
-    autoflush=False
+    autoflush=False,
+    bind=engine
 )
 
-class Base(DeclarativeBase):
-    pass
+Base = declarative_base()
 
-# --------------------------------------------------
-# 3. User database model
-# --------------------------------------------------
+
+# 3. USER MODEL
 
 class User(Base):
-    __tablename__ = "usersJ"
+    __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(
-        primary_key=True,
-        autoincrement=True
-    )
-
-    username: Mapped[str] = mapped_column(
-        String(50),
-        unique=True,
-        index=True
-    )
-
-    email: Mapped[str] = mapped_column(
-        String(100),
-        unique=True
-    )
-
-    hashed_password: Mapped[str] = mapped_column(
-        String(255)
-    )
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(String(20), nullable=False)
 
 
-try:
-    Base.metadata.create_all(bind=engine)
-except Exception:
-    # Allow the app to import even when the local PostgreSQL instance is not running.
-    # The database will be initialized when the service is available.
-    pass
+# 4. PRODUCT MODEL
+
+class Product(Base):
+    __tablename__ = "products"
+
+    pid = Column(Integer, primary_key=True, index=True)
+    pname = Column(String(100), nullable=False)
+    price = Column(Float, nullable=False)
+    warranty = Column(Integer, nullable=False)
 
 
-# --------------------------------------------------
-# 4. Database dependency
-# --------------------------------------------------
+# Create tables
+Base.metadata.create_all(bind=engine)
+
+
+# 5. DATABASE DEPENDENCY
 
 def get_db():
     db = SessionLocal()
@@ -86,63 +71,45 @@ def get_db():
         db.close()
 
 
-# --------------------------------------------------
-# 5. Password hashing
-# --------------------------------------------------
+# 6. PASSWORD HASHING
 
-password_hash = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-# --------------------------------------------------
-# 6. JWT configuration
-# --------------------------------------------------
-
-SECRET_KEY = "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="login"
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto"
 )
 
 
-# --------------------------------------------------
-# 7. Pydantic schemas
-# --------------------------------------------------
-
-class UserCreate(BaseModel):
-    username: str
-    email: EmailStr
-    password: str
+def hash_password(password: str):
+    return pwd_context.hash(password)
 
 
-class UserResponse(BaseModel):
-    id: int
-    username: str
-    email: EmailStr
-
-    model_config = {
-        "from_attributes": True
-    }
+def verify_password(plain_password: str, hashed_password: str):
+    return pwd_context.verify(
+        plain_password,
+        hashed_password
+    )
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+# 7. JWT CONFIGURATION
 
+SECRET_KEY = "my-secret-key-for-rbac-demo"
 
-# --------------------------------------------------
-# 8. Create JWT access token
-# --------------------------------------------------
+ALGORITHM = "HS256"
+
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
 
 def create_access_token(data: dict):
+
     to_encode = data.copy()
 
-    expire = datetime.now(timezone.utc) + timedelta(
+    expire = datetime.utcnow() + timedelta(
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )
 
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": expire
+    })
 
     encoded_jwt = jwt.encode(
         to_encode,
@@ -153,86 +120,119 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 
-# --------------------------------------------------
-# 9. User registration API
-# --------------------------------------------------
+# 8. OAUTH2 SCHEME
 
-@app.post(
-    "/register",
-    response_model=UserResponse,
-    status_code=status.HTTP_201_CREATED
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="login"
 )
-def register_user(
-    user_data: UserCreate,
+
+# 9. FIND USER
+
+def get_user(
+    db: Session,
+    username: str
+):
+
+    return db.query(User).filter(
+        User.username == username
+    ).first()
+
+
+# 10. REGISTER USER
+
+@app.post("/register")
+def register(
+    username: str,
+    password: str,
+    role: str = "user",
     db: Session = Depends(get_db)
 ):
-    existing_user = db.scalar(
-        select(User).where(
-            (User.username == user_data.username) |
-            (User.email == user_data.email)
-        )
+
+    # Check whether username already exists
+
+    existing_user = get_user(
+        db,
+        username
     )
 
     if existing_user:
         raise HTTPException(
             status_code=400,
-            detail="Username or email already exists"
+            detail="Username already exists"
         )
 
-    hashed_password = password_hash.hash(
-        user_data.password
-    )
+    # user, admin role
+
+    if role not in ["admin", "user"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Role must be admin or user"
+        )
+
+    # Hash password
+
+    hashed_password = hash_password(password)
+
+    # Create user
 
     new_user = User(
-        username=user_data.username,
-        email=user_data.email,
-        hashed_password=hashed_password,
+        username=username,
+        password_hash=hashed_password,
+        role=role
     )
 
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
-    return new_user
+    return {
+        "message": "User registered successfully",
+        "username": new_user.username,
+        "role": new_user.role
+    }
 
-# --------------------------------------------------
-# 10. Login API - Generate JWT
-# --------------------------------------------------
 
-@app.post("/login", response_model=Token)
-def login_user(
-    form_data: Annotated[
-        OAuth2PasswordRequestForm,
-        Depends()
-    ],
+# 11. LOGIN
+
+@app.post("/login")
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    user = db.scalar(
-        select(User).where(
-            User.username == form_data.username
-        )
+
+    # Find user
+
+    user = get_user(
+        db,
+        form_data.username
     )
+
+    # Verify username/password
 
     if not user:
+
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password"
         )
 
-    password_valid = password_hash.verify(
+    if not verify_password(
         form_data.password,
-        user.hashed_password
-    )
+        user.password_hash
+    ):
 
-    if not password_valid:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password"
         )
 
-    access_token = create_access_token(
-        data={"sub": str(user.id)}
-    )
+    # Create JWT
+
+    access_token = create_access_token({
+        "sub": str(user.id),
+        "username": user.username,
+        "role": user.role
+    })
 
     return {
         "access_token": access_token,
@@ -240,16 +240,15 @@ def login_user(
     }
 
 
-# --------------------------------------------------
-# 11. Get current authenticated user
-# --------------------------------------------------
+# 12. GET CURRENT USER FROM JWT
 
 def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
+
     credentials_exception = HTTPException(
-        status_code=401,
+        status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={
             "WWW-Authenticate": "Bearer"
@@ -257,61 +256,171 @@ def get_current_user(
     )
 
     try:
+
+        # Decode JWT
+
         payload = jwt.decode(
             token,
             SECRET_KEY,
             algorithms=[ALGORITHM]
         )
 
-        user_id = payload.get("sub")
+        username = payload.get("username")
 
-        if user_id is None:
+        if username is None:
             raise credentials_exception
 
-        user = db.get(User, int(user_id))
+    except JWTError:
 
-        if user is None:
-            raise credentials_exception
-
-        return user
-
-    except (JWTError, ValueError):
         raise credentials_exception
 
+    # Find user in database
 
-# --------------------------------------------------
-# 12. Protected endpoint
-# --------------------------------------------------
+    user = get_user(
+        db,
+        username
+    )
 
-@app.get("/profile", response_model=UserResponse)
-def get_profile(
-    current_user: Annotated[
-        User,
-        Depends(get_current_user)
-    ]
+    if user is None:
+        raise credentials_exception
+
+    return user
+
+
+# 13. RBAC - ADMIN ONLY
+
+def admin_required(
+    current_user: User = Depends(get_current_user)
 ):
+
+    if current_user.role != "admin":
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
     return current_user
 
 
-# --------------------------------------------------
-# 13. Protected booking example
-# --------------------------------------------------
+# 14. NORMAL USER + ADMIN
 
-@app.get("/bookings")
-def get_bookings(
-    current_user: Annotated[
-        User,
-        Depends(get_current_user)
-    ]
+@app.get("/products")
+def get_products(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+
+    products = db.query(Product).all()
+
     return {
-        "message": "Authenticated user can access bookings",
-        "user_id": current_user.id,
-        "username": current_user.username
+        "logged_in_user": current_user.username,
+        "role": current_user.role,
+        "products": products
     }
 
 
-if __name__ == "__main__":
-    import uvicorn
+# 15. ADMIN TO ADD PRODUCT
 
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+@app.post("/products")
+def add_product(
+    pname: str,
+    price: float,
+    warranty: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(admin_required)
+):
+
+    product = Product(
+        pname=pname,
+        price=price,
+        warranty=warranty
+    )
+
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+
+    return {
+        "message": "Product added successfully",
+        "product_id": product.pid,
+        "added_by": admin.username
+    }
+
+
+# 16. ADMIN TO UPDATE PRODUCT
+
+@app.put("/products/{pid}")
+def update_product(
+    pid: int,
+    pname: str,
+    price: float,
+    warranty: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(admin_required)
+):
+
+    product = db.query(Product).filter(
+        Product.pid == pid
+    ).first()
+
+    if product is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found"
+        )
+
+    product.pname = pname
+    product.price = price
+    product.warranty = warranty
+
+    db.commit()
+
+    return {
+        "message": "Product updated successfully",
+        "updated_by": admin.username
+    }
+
+
+# 17. ADMIN TO DELETE PRODUCT
+
+@app.delete("/products/{pid}")
+def delete_product(
+    pid: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(admin_required)
+):
+
+    product = db.query(Product).filter(
+        Product.pid == pid
+    ).first()
+
+    if product is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found"
+        )
+
+    db.delete(product)
+    db.commit()
+
+    return {
+        "message": "Product deleted successfully",
+        "deleted_by": admin.username
+    }
+
+
+# 18. CURRENT USER PROFILE
+
+@app.get("/profile")
+def profile(
+    current_user: User = Depends(get_current_user)
+):
+
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "role": current_user.role
+    }

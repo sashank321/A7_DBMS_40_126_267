@@ -15,5 +15,5 @@ def run_text_to_sql(
     current_user: User = Depends(get_current_user)
 ):
     sql_query = text2sql_service.natural_to_sql(req.natural_query, current_user)
-    result = text2sql_service.execute_safe_query(db, sql_query, req.natural_query)
+    result = text2sql_service.execute_safe_query(db, sql_query, req.natural_query, user=current_user)
     return result

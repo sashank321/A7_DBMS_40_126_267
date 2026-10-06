@@ -26,7 +26,7 @@ interface BipartiteFlowGraphProps {
 export function BipartiteFlowGraph({
   data,
   traces = [],
-  algorithmName = "Dinic",
+  algorithmName = "Graph",
   onEdgeClick,
 }: BipartiteFlowGraphProps) {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);

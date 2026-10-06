@@ -1,7 +1,8 @@
 "use client";
 
+import { usePlatform, useDemoAccounts } from "@/lib/platform";
 import React, { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import {
   Search,
@@ -14,6 +15,9 @@ import {
 import type { SearchResponse } from "@/types";
 
 export default function SearchPage() {
+  const { data: suggestedDocuments } = useQuery({ queryKey: ["documents-list"], queryFn: () => api.getDocuments() });
+  const platform = usePlatform();
+  const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: api.getCatalog });
   const [query, setQuery] = useState("");
   const [topK, setTopK] = useState(5);
   const [departmentId, setDepartmentId] = useState<number | undefined>(undefined);
@@ -30,22 +34,18 @@ export default function SearchPage() {
     searchMutation.mutate(query.trim());
   };
 
-  const sampleSearches = [
-    "leave policy and remote work guidelines",
-    "PostgreSQL relational indexing and table query optimization",
-    "SOC2 security audit compliance and encryption keys",
-    "financial budget forecast for Q1"
-  ];
+  const sampleSearches = (suggestedDocuments || []).slice(0, 4).map(d => d.title);
 
   return (
     <div className="space-y-6 select-none font-sans text-ink-black pb-12 max-w-5xl mx-auto">
+      {searchMutation.isError && <p role="alert" className="text-red-700">Search failed. Please check the backend and retry.</p>}
       {/* Banner */}
       <div className="border border-ink-black/10 bg-white p-6 rounded-2xl shadow-sm space-y-2">
         <div className="flex items-center gap-2 font-space text-[10px] text-muted tracking-widest uppercase">
           <BrainCircuit className="h-3.5 w-3.5 text-accent-orange" />
           <span>[ DENSE EMBEDDING RETRIEVAL ]</span>
           <span>//</span>
-          <span className="text-accent-orange font-bold">MiniLM 384-dim Dense Vectors</span>
+          <span className="text-accent-orange font-bold">{platform.embeddingLabel}</span>
         </div>
         <h1 className="text-3xl font-heading font-bold text-ink-black">
           Hybrid Vector <span className="text-accent-orange italic font-normal">Search</span>
@@ -58,18 +58,18 @@ export default function SearchPage() {
       {/* Search Input Box */}
       <div className="border border-ink-black/10 bg-white p-6 rounded-2xl shadow-sm space-y-4 font-space">
         <form onSubmit={handleSearch} className="space-y-3">
-          <div className="relative">
+          <div className="flex flex-col sm:block gap-2 relative">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search conceptual queries or keywords..."
-              className="w-full p-4 pr-32 border border-ink-black/15 rounded-xl text-sm focus:outline-none focus:border-accent-orange font-sans"
+              className="w-full p-4 sm:pr-40 border border-ink-black/15 rounded-xl text-sm focus:outline-none focus:border-accent-orange font-sans"
             />
             <button
               type="submit"
               disabled={searchMutation.isPending || !query.trim()}
-              className="absolute right-3 top-2.5 px-5 py-2 bg-ink-black text-beige-bg font-bold text-xs rounded-lg hover:bg-accent-orange transition-colors disabled:opacity-50"
+              className="sm:absolute right-3 top-2.5 px-5 py-2 bg-ink-black text-beige-bg font-bold text-xs rounded-lg hover:bg-accent-orange transition-colors disabled:opacity-50"
             >
               {searchMutation.isPending ? "Searching..." : "Execute Search"}
             </button>
@@ -84,11 +84,7 @@ export default function SearchPage() {
                 className="p-1 border border-ink-black/10 rounded text-xs bg-white"
               >
                 <option value="">All Departments</option>
-                <option value={1}>Human Resources</option>
-                <option value={2}>Finance</option>
-                <option value={3}>Engineering</option>
-                <option value={4}>Marketing</option>
-                <option value={5}>Legal</option>
+                {catalog?.departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
 
@@ -114,6 +110,7 @@ export default function SearchPage() {
             {sampleSearches.map((s, idx) => (
               <button
                 key={idx}
+                disabled={searchMutation.isPending}
                 onClick={() => {
                   setQuery(s);
                   searchMutation.mutate(s);
@@ -156,7 +153,7 @@ export default function SearchPage() {
                       </p>
                     </div>
                     <span className="px-2.5 py-1 bg-black/5 rounded text-xs font-mono font-bold text-accent-orange">
-                      Cosine: {res.similarity_score}
+                      {res.retrieval_mode === "hybrid" ? "Fusion score" : res.retrieval_mode === "structured" ? "Text match" : "Cosine"}: {res.similarity_score}
                     </span>
                   </div>
 

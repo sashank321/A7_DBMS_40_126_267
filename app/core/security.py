@@ -1,28 +1,20 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union, Optional
 from jose import jwt, JWTError
-from passlib.context import CryptContext
+import bcrypt
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
-        # Check standard bcrypt
-        if pwd_context.verify(plain_password, hashed_password):
-            return True
-    except Exception:
-        pass
-    
-    # Fallback convenience for college demo seeds where sample bcrypt hashes were static placeholders
-    if hashed_password.startswith("$2a$12$eImiTXuWVxfM37uY4JANjO") and plain_password in ["password123", "admin123", "password", "123456"]:
-        return True
-    if plain_password == hashed_password:
-        return True
-    return False
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
+
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
 
 def create_access_token(subject: Union[str, Any], role: str, department_id: int, user_id: int, expires_delta: Optional[timedelta] = None) -> str:
     if expires_delta:

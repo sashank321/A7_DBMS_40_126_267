@@ -1,4 +1,5 @@
 import os
+from app.core.config import settings
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
@@ -6,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.db.postgres import get_db
-from app.models.postgres_models import Document, DocumentVersion, DocumentTag, Tag, DocumentPermission, User
+from app.models.postgres_models import KnowledgeEntity, Document, DocumentVersion, DocumentTag, Tag, DocumentPermission, User
 from app.schemas.document import DocumentResponse, PermissionUpdate, PermissionResponse, DocumentVersionSchema
 from app.services.document_service import document_service
 from app.services.mongo_service import mongo_service
@@ -194,13 +195,29 @@ def download_document_file(
 
     real_storage_dir = os.path.realpath(settings.STORAGE_DIR)
     real_file_path = os.path.realpath(doc.file_path)
-    if not real_file_path.startswith(real_storage_dir):
+    try:
+        inside_storage = os.path.commonpath([real_storage_dir, real_file_path]) == real_storage_dir
+    except ValueError:
+        inside_storage = False
+    if not inside_storage:
         raise HTTPException(status_code=403, detail="Security violation: Path traversal detected.")
 
     if not os.path.exists(doc.file_path):
         raise HTTPException(status_code=404, detail="Physical file not found on storage server")
 
     return FileResponse(path=doc.file_path, filename=doc.file_name)
+
+@router.get("/{document_id}/permissions")
+def permission_editor(document_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    doc = db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if current_user.role.role_name != "Admin" and doc.uploaded_by != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Only Admin or document owner can manage permissions")
+    return {
+        "users": [{"id": u.user_id, "name": u.name} for u in db.query(User).order_by(User.name)],
+        "permissions": [{"user_id": p.user_id, "can_view": p.can_view, "can_edit": p.can_edit, "can_delete": p.can_delete} for p in db.query(DocumentPermission).filter_by(document_id=document_id)],
+    }
 
 @router.put("/{document_id}/permissions", response_model=PermissionResponse)
 def update_permission(
@@ -269,8 +286,22 @@ def delete_document(
         raise HTTPException(status_code=403, detail="Access denied: You do not have permission to delete this document.")
 
     title = doc.title
+    stored_files = {doc.file_path} | {version.file_path for version in doc.versions}
+    for source in list(doc.entity_sources):
+        entity = db.get(KnowledgeEntity, source.entity_id)
+        if entity and entity.entity_type == "DOCUMENT" and all(s.document_id == document_id for s in entity.sources):
+            db.delete(entity)
     db.delete(doc)
     db.commit()
 
+    for stored_file in stored_files:
+        resolved = os.path.realpath(stored_file)
+        storage = os.path.realpath(settings.STORAGE_DIR)
+        try:
+            inside_storage = os.path.commonpath([resolved, storage]) == storage
+        except ValueError:
+            inside_storage = False
+        if inside_storage and os.path.isfile(resolved):
+            os.remove(resolved)
     mongo_service.log_activity("DOCUMENT_DELETE", current_user.user_id, document_id, {"title": title})
     return {"message": f"Document '{title}' deleted successfully."}
