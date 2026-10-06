@@ -17,7 +17,8 @@ import {
   CheckCircle,
   AlertCircle,
   Clock,
-  Filter
+  Filter,
+  Search
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import type { DocumentItem } from "@/types";
@@ -28,6 +29,7 @@ export default function DocumentsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedDept, setSelectedDept] = useState<number | undefined>(undefined);
+  const [searchFilter, setSearchFilter] = useState("");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
 
   const [versionDoc, setVersionDoc] = useState<DocumentItem | null>(null);
@@ -105,7 +107,15 @@ export default function DocumentsPage() {
     onError: () => setStatusMsg({ type: "error", text: "Permissions could not be updated. Check the target user and your access." }),
   });
   const download = async (doc: DocumentItem) => { try { await api.downloadDocument(doc.document_id, doc.file_name || "document.txt"); } catch { setStatusMsg({ type: "error", text: "Document download failed." }); } };
-  const docs = documents || [];
+  const docs = (documents || []).filter((doc) => {
+    if (!searchFilter.trim()) return true;
+    const term = searchFilter.toLowerCase();
+    return (
+      doc.title.toLowerCase().includes(term) ||
+      (doc.description && doc.description.toLowerCase().includes(term)) ||
+      doc.tags.some((t) => t.toLowerCase().includes(term))
+    );
+  });
 
   return (
     <div className="space-y-6 select-none font-sans text-ink-black pb-12">
@@ -151,22 +161,35 @@ export default function DocumentsPage() {
       )}
 
       {/* Filter Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 font-space text-xs">
-        <Filter className="h-3.5 w-3.5 text-muted" />
-        <span className="text-muted uppercase text-[10px]">Filter Department:</span>
-        {[{ id: undefined, label: "All Depts" }, ...(catalog?.departments || []).map(d => ({ id: d.id, label: d.name }))].map((dept) => (
-          <button
-            key={String(dept.id)}
-            onClick={() => setSelectedDept(dept.id)}
-            className={`px-3 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider transition-colors ${
-              selectedDept === dept.id
-                ? "bg-ink-black text-beige-bg"
-                : "bg-white border border-ink-black/10 text-muted hover:text-ink-black"
-            }`}
-          >
-            {dept.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-4 font-space text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter className="h-3.5 w-3.5 text-muted" />
+          <span className="text-muted uppercase text-[10px]">Filter Department:</span>
+          {[{ id: undefined, label: "All Depts" }, ...(catalog?.departments || []).map(d => ({ id: d.id, label: d.name }))].map((dept) => (
+            <button
+              key={String(dept.id)}
+              onClick={() => setSelectedDept(dept.id)}
+              className={`px-3 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider transition-colors ${
+                selectedDept === dept.id
+                  ? "bg-ink-black text-beige-bg"
+                  : "bg-white border border-ink-black/10 text-muted hover:text-ink-black"
+              }`}
+            >
+              {dept.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative min-w-[240px]">
+          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted" />
+          <input
+            type="text"
+            placeholder="Search documents by title, tags..."
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            className="w-full pl-9 pr-3 py-1.5 border border-ink-black/15 rounded-lg text-xs font-sans focus:outline-none focus:border-accent-orange bg-white shadow-sm"
+          />
+        </div>
       </div>
 
       {/* Document Table */}

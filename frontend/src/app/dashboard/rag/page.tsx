@@ -14,7 +14,9 @@ import {
   ChevronDown,
   ChevronUp,
   Cpu,
-  Layers
+  Layers,
+  Copy,
+  Check
 } from "lucide-react";
 import type { RAGResponse } from "@/types";
 
@@ -25,6 +27,21 @@ export default function RAGCopilotPage() {
   const [topK, setTopK] = useState(4);
   const [ragResult, setRagResult] = useState<RAGResponse | null>(null);
   const [expandedCitation, setExpandedCitation] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyAnswer = () => {
+    if (!ragResult) return;
+    let text = `# Grounded Response\n\n${ragResult.answer}\n\n`;
+    if (ragResult.citations && ragResult.citations.length > 0) {
+      text += `## Verified Citations\n`;
+      ragResult.citations.forEach((c, i) => {
+        text += `- [${i + 1}] **${c.title}** (v${c.version_number}, chunk #${c.chunk_id})\n  > "${c.snippet}"\n`;
+      });
+    }
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const ragMutation = useMutation({
     mutationFn: (q: string) => api.ragQuery(q, topK),
@@ -147,7 +164,17 @@ export default function RAGCopilotPage() {
 
           {/* Answer Text */}
           <div className="space-y-2">
-            <h3 className="text-xs uppercase font-bold text-muted tracking-wider">Grounded Response:</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs uppercase font-bold text-muted tracking-wider">Grounded Response:</h3>
+              <button
+                type="button"
+                onClick={handleCopyAnswer}
+                className="flex items-center gap-1.5 px-3 py-1 bg-black/5 hover:bg-accent-orange hover:text-white rounded text-[11px] font-mono transition-colors font-bold shadow-sm"
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                <span>{copied ? "Copied!" : "Copy Answer & Citations"}</span>
+              </button>
+            </div>
             <div className="p-4 bg-[#F9F8F3] border border-ink-black/10 rounded-xl font-sans text-sm leading-relaxed whitespace-pre-wrap text-ink-black shadow-inner">
               {ragResult.answer}
             </div>

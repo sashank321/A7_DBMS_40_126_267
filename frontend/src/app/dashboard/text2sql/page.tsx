@@ -11,13 +11,50 @@ import {
   Play,
   AlertTriangle,
   Database,
-  Code2
+  Code2,
+  Copy,
+  Check,
+  Download
 } from "lucide-react";
 import type { Text2SQLResponse } from "@/types";
 
 export default function Text2SQLPage() {
   const [query, setQuery] = useState("");
   const [sqlResult, setSqlResult] = useState<Text2SQLResponse | null>(null);
+  const [copiedSql, setCopiedSql] = useState(false);
+
+  const handleCopySql = () => {
+    if (!sqlResult?.generated_sql) return;
+    navigator.clipboard.writeText(sqlResult.generated_sql);
+    setCopiedSql(true);
+    setTimeout(() => setCopiedSql(false), 2000);
+  };
+
+  const handleExportCSV = () => {
+    if (!sqlResult?.results || sqlResult.results.length === 0) return;
+    const headers = Object.keys(sqlResult.results[0]);
+    const csvRows = [
+      headers.join(","),
+      ...sqlResult.results.map((row) =>
+        headers
+          .map((fieldName) => {
+            const val = row[fieldName];
+            const escaped = (val === null || val === undefined ? "" : String(val)).replace(/"/g, '""');
+            return `"${escaped}"`;
+          })
+          .join(",")
+      ),
+    ];
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `sql_analytics_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const sqlMutation = useMutation({
     mutationFn: (q: string) => api.text2sql(q),
@@ -169,9 +206,19 @@ export default function Text2SQLPage() {
           {/* Generated SQL Statement */}
           {sqlResult.generated_sql && (
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-[10px] text-muted uppercase font-bold">
-                <Code2 className="h-3.5 w-3.5 text-accent-orange" />
-                <span>Generated PostgreSQL Query:</span>
+              <div className="flex items-center justify-between text-[10px] text-muted uppercase font-bold">
+                <div className="flex items-center gap-2">
+                  <Code2 className="h-3.5 w-3.5 text-accent-orange" />
+                  <span>Generated PostgreSQL Query:</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopySql}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-black/5 hover:bg-black/10 text-ink-black rounded transition-colors normal-case font-mono"
+                >
+                  {copiedSql ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                  <span>{copiedSql ? "Copied" : "Copy SQL"}</span>
+                </button>
               </div>
               <pre className="p-4 bg-[#0F0F0F] text-[#F4F1E6] rounded-xl text-xs font-mono overflow-x-auto border border-black/20">
                 {sqlResult.generated_sql}
@@ -182,9 +229,19 @@ export default function Text2SQLPage() {
           {/* Tabular Results */}
           {sqlResult.results && sqlResult.results.length > 0 && (
             <div className="space-y-2 pt-2">
-              <h4 className="text-xs uppercase font-bold text-muted tracking-wider">
-                Execution Results from knowledgesphere_db:
-              </h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs uppercase font-bold text-muted tracking-wider">
+                  Execution Results from knowledgesphere_db:
+                </h4>
+                <button
+                  type="button"
+                  onClick={handleExportCSV}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-ink-black text-beige-bg hover:bg-accent-orange rounded text-[11px] font-mono transition-colors font-bold shadow-sm"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Export CSV</span>
+                </button>
+              </div>
 
               <div className="border border-ink-black/10 rounded-xl overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs font-mono">
