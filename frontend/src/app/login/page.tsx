@@ -300,7 +300,7 @@ export default function LoginPage() {
 
               <div>
                 <p className="text-muted-foreground text-center text-[11px] mb-2">
-                  Enter the 6-digit verification code dispatched for <strong className="text-ink-black">{email}</strong>
+                  Enter the 6-digit verification code dispatched via Telegram / notification for <strong className="text-ink-black">{email}</strong>
                 </p>
 
                 {/* 6-Digit Monospace Input */}

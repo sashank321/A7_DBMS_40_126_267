@@ -109,3 +109,41 @@ def test_direct_login_with_valid_otp(client, admin_profile):
     })
     assert login_res.status_code == 200
     assert "access_token" in login_res.json()
+
+def test_telegram_otp_dispatch(monkeypatch):
+    import json
+    from app.core.config import settings
+    from app.services.otp_service import OTPService
+
+    monkeypatch.setattr(settings, "TELEGRAM_BOT_TOKEN", "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11")
+    monkeypatch.setattr(settings, "TELEGRAM_CHAT_ID", "987654321")
+
+    posted_urls = []
+    posted_payloads = []
+
+    class MockResponse:
+        status = 200
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+
+    def mock_urlopen(req, timeout=5):
+        posted_urls.append(req.full_url)
+        posted_payloads.append(json.loads(req.data.decode("utf-8")))
+        return MockResponse()
+
+    import urllib.request
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+
+    # Call _send_telegram directly (or inside synchronous context)
+    OTPService._send_telegram("test@example.com", "654321", 5)
+
+    import time
+    time.sleep(0.1)  # wait for daemon thread
+
+    assert len(posted_urls) == 1
+    assert "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" in posted_urls[0]
+    assert posted_payloads[0]["chat_id"] == "987654321"
+    assert "654321" in posted_payloads[0]["text"]
+    assert "test@example.com" in posted_payloads[0]["text"]

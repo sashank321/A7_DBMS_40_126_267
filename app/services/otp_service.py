@@ -74,12 +74,58 @@ class OTPService:
             except Exception:
                 pass
 
+        # Dispatch Telegram notification via Telegram Bot API (free, instant)
+        cls._send_telegram(email, code, expires_minutes)
+
         # Attempt real SMTP email dispatch if configured
         if settings.SMTP_HOST and settings.SMTP_HOST.strip():
             try:
                 cls._send_email(email, code, expires_minutes)
             except Exception as e:
                 logger.warning("[AUTH OTP] Optional SMTP dispatch failed (%s).", str(e))
+
+    @classmethod
+    def _send_telegram(cls, email: str, code: str, expires_minutes: int) -> None:
+        """
+        Sends OTP verification code to Telegram via the official Telegram Bot API.
+        100% free, zero external subscription cost, instant delivery to mobile/desktop.
+        """
+        bot_token = (settings.TELEGRAM_BOT_TOKEN or "").strip()
+        chat_id = (settings.TELEGRAM_CHAT_ID or "").strip()
+        if not bot_token or not chat_id:
+            return
+
+        import threading
+        def _dispatch():
+            try:
+                import urllib.request
+                import json
+                api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+                expires_at_str = (get_utc_now() + timedelta(minutes=expires_minutes)).strftime("%H:%M:%S UTC")
+                text = (
+                    "🔐 *KnowledgeSphere AI — 2FA Security Code*\n\n"
+                    f"👤 *Recipient:* `{email}`\n"
+                    f"🔢 *Verification Code:* `{code}`\n"
+                    f"⏱ *Valid for:* {expires_minutes} minutes (Expires at {expires_at_str})\n\n"
+                    "🛡 _If you did not request this login code, disregard this message._"
+                )
+                payload = json.dumps({
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "Markdown"
+                }).encode("utf-8")
+                req = urllib.request.Request(
+                    api_url,
+                    data=payload,
+                    headers={"Content-Type": "application/json", "User-Agent": "KnowledgeSphereAI-2FA/1.0"}
+                )
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    if response.status == 200:
+                        logger.info("[AUTH OTP] Successfully dispatched Telegram OTP to chat %s", chat_id)
+            except Exception as e:
+                logger.warning("[AUTH OTP] Optional Telegram dispatch failed (%s).", str(e))
+
+        threading.Thread(target=_dispatch, daemon=True).start()
 
 
     @classmethod

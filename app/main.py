@@ -39,9 +39,6 @@ async def lifespan(app: FastAPI):
         import logging
         logging.getLogger(__name__).warning("Redis connection unavailable: %s", exc)
 
-    from app.services.embedding_service import embedding_service
-    embedding_service.provider  # Load and verify the configured semantic model before accepting requests.
-
     yield
 
     await close_redis()
