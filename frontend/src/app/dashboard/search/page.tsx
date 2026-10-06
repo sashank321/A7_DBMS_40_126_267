@@ -44,7 +44,7 @@ export default function SearchPage() {
         <div className="flex items-center gap-2 font-space text-[10px] text-muted tracking-widest uppercase">
           <BrainCircuit className="h-3.5 w-3.5 text-accent-orange" />
           <span>[ DENSE EMBEDDING RETRIEVAL ]</span>
-          <span>//</span>
+          <span>{"//"}</span>
           <span className="text-accent-orange font-bold">{platform.embeddingLabel}</span>
         </div>
         <h1 className="text-3xl font-heading font-bold text-ink-black">
@@ -117,7 +117,7 @@ export default function SearchPage() {
                 }}
                 className="px-3 py-1 bg-black/5 hover:bg-black/10 rounded-md text-[10px] text-muted hover:text-ink-black transition-colors"
               >
-                "{s}"
+                &quot;{s}&quot;
               </button>
             ))}
           </div>
@@ -130,7 +130,7 @@ export default function SearchPage() {
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-2 text-xs">
               <span className="font-bold text-ink-black">Results ({searchData.results.length})</span>
-              <span className="text-[10px] text-muted">for "{searchData.query}"</span>
+              <span className="text-[10px] text-muted">for &quot;{searchData.query}&quot;</span>
             </div>
             <span className="px-2 py-0.5 bg-accent-orange/10 border border-accent-orange/30 text-accent-orange text-[10px] font-bold rounded">
               Route: {searchData.route_intent}
@@ -149,7 +149,7 @@ export default function SearchPage() {
                     <div>
                       <h4 className="font-bold text-sm text-ink-black font-sans">{res.title}</h4>
                       <p className="text-[10px] text-muted">
-                        Doc ID: #{res.document_id} // Chunk: #{res.chunk_id || 1}
+                        Doc ID: #{res.document_id} {"//"} Chunk: #{res.chunk_id || 1}
                       </p>
                     </div>
                     <span className="px-2.5 py-1 bg-black/5 rounded text-xs font-mono font-bold text-accent-orange">
@@ -158,7 +158,7 @@ export default function SearchPage() {
                   </div>
 
                   <p className="text-xs font-sans text-muted leading-relaxed line-clamp-3 bg-black/[0.02] p-3 rounded-lg border border-ink-black/5">
-                    "{res.content_snippet}"
+                    &quot;{res.content_snippet}&quot;
                   </p>
 
                   <div className="flex items-center justify-between text-[10px] text-muted pt-1">

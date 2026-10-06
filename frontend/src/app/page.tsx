@@ -10,7 +10,6 @@ export default function Home() {
 
   return (
     <>
-      <link rel="stylesheet" href="/_astro/base-layout.D3gcHEVS.css" />
       <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
       <LandingMetadata />
       <HeroComputerInteractive />

@@ -60,7 +60,7 @@ export default function Text2SQLPage() {
         <div className="flex items-center gap-2 font-space text-[10px] text-muted tracking-widest uppercase">
           <Terminal className="h-3.5 w-3.5 text-accent-orange" />
           <span>[ SAFE SQL COMPILATION ]</span>
-          <span>//</span>
+          <span>{"//"}</span>
           <span className="text-accent-orange font-bold">AST Table Whitelisting & SELECT Enforcement</span>
         </div>
         <h1 className="text-3xl font-heading font-bold text-ink-black">
@@ -106,7 +106,7 @@ export default function Text2SQLPage() {
                 }}
                 className="px-3 py-1 bg-black/5 hover:bg-black/10 rounded-md text-[10px] text-muted hover:text-ink-black transition-colors"
               >
-                "{sq}"
+                &quot;{sq}&quot;
               </button>
             ))}
           </div>

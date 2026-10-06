@@ -15,18 +15,20 @@ export default function GraphViewPage() {
   const [neighborsOnly, setNeighborsOnly] = useState(false);
   const [zoom, setZoom] = useState(1);
   const { data, isLoading, isFetching, error, refetch } = useQuery({ queryKey: ["knowledge-graph"], queryFn: () => api.getGraph(500) });
-  const nodes = data?.nodes || [];
-  const edges = data?.edges || [];
-  const selected = nodes.find(node => node.id === selectedId);
+  const nodes = useMemo(() => data?.nodes || [], [data?.nodes]);
+  const edges = useMemo(() => data?.edges || [], [data?.edges]);
+  const selected = useMemo(() => nodes.find(node => node.id === selectedId), [nodes, selectedId]);
   useEffect(() => { if (data && selectedId !== null && !data.nodes.some(n => n.id === selectedId)) { setSelectedId(null); setNeighborsOnly(false); } }, [data, selectedId]);
-  const linked = edges.filter(edge => edge.source === selectedId || edge.target === selectedId);
-  const connected = new Set<number>(selectedId === null ? [] : [selectedId, ...linked.flatMap(edge => [edge.source, edge.target])]);
-  const types = Array.from(new Set(nodes.map(node => node.type))).sort();
-  const visibleNodes = nodes.filter(node => (!type || node.type === type) && (!neighborsOnly || selectedId === null || connected.has(node.id)));
-  const visibleIds = new Set(visibleNodes.map(node => node.id));
-  const visibleEdges = edges.filter(edge => visibleIds.has(edge.source) && visibleIds.has(edge.target));
+  const linked = useMemo(() => edges.filter(edge => edge.source === selectedId || edge.target === selectedId), [edges, selectedId]);
+  const connected = useMemo(() => new Set<number>(selectedId === null ? [] : [selectedId, ...linked.flatMap(edge => [edge.source, edge.target])]), [selectedId, linked]);
+  const types = useMemo(() => Array.from(new Set(nodes.map(node => node.type))).sort(), [nodes]);
+  const visibleNodes = useMemo(() => {
+    return nodes.filter(node => (!type || node.type === type) && (!neighborsOnly || selectedId === null || connected.has(node.id)));
+  }, [nodes, type, neighborsOnly, selectedId, connected]);
+  const visibleIds = useMemo(() => new Set(visibleNodes.map(node => node.id)), [visibleNodes]);
+  const visibleEdges = useMemo(() => edges.filter(edge => visibleIds.has(edge.source) && visibleIds.has(edge.target)), [edges, visibleIds]);
   const listNodes = visibleNodes.filter(node => `${node.name} ${node.type}`.toLowerCase().includes(search.trim().toLowerCase()));
-  const byId = new Map(nodes.map(node => [node.id, node]));
+  const byId = useMemo(() => new Map(nodes.map(node => [node.id, node])), [nodes]);
   const layout = useMemo(() => {
     const grouped = new Map<string, typeof visibleNodes>();
     visibleNodes.forEach(node => grouped.set(node.type, [...(grouped.get(node.type) || []), node]));
@@ -36,7 +38,7 @@ export default function GraphViewPage() {
     const positions = new Map<number, { x: number; y: number }>();
     columns.forEach(([, values], column) => values.forEach((node, row) => positions.set(node.id, { x: 130 + column * 220, y: 85 + row * 66 })));
     return { positions, columns, width, height };
-  }, [data, type, neighborsOnly, selectedId]);
+  }, [visibleNodes]);
   const select = (id: number) => { setSelectedId(id); setSearch(""); };
 
   return (

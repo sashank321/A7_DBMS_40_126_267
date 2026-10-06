@@ -49,7 +49,7 @@ export default function RAGCopilotPage() {
         <div className="flex items-center gap-2 font-space text-[10px] text-muted tracking-widest uppercase">
           <Sparkles className="h-3.5 w-3.5 text-accent-orange" />
           <span>[ GROUNDED RAG INTELLIGENCE ]</span>
-          <span>//</span>
+          <span>{"//"}</span>
           <span className="text-accent-orange font-bold">Pre-Retrieval RBAC Security Gate</span>
         </div>
         <h1 className="text-3xl font-heading font-bold text-ink-black">
@@ -100,7 +100,7 @@ export default function RAGCopilotPage() {
                 }}
                 className="px-3 py-1 bg-black/5 hover:bg-black/10 rounded-md text-[10px] text-muted hover:text-ink-black transition-colors text-left"
               >
-                "{sq}"
+                &quot;{sq}&quot;
               </button>
             ))}
           </div>
@@ -178,7 +178,7 @@ export default function RAGCopilotPage() {
 
                     {expandedCitation === idx && (
                       <div className="mt-2.5 pt-2 border-t border-ink-black/5 text-muted font-sans text-xs leading-relaxed bg-black/[0.02] p-2 rounded">
-                        "{cit.snippet}"
+                        &quot;{cit.snippet}&quot;
                       </div>
                     )}
                   </div>

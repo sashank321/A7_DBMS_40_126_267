@@ -77,7 +77,7 @@ export default function TelemetryPage() {
         <div className="flex items-center gap-2 font-space text-[10px] text-muted tracking-widest uppercase">
           <Database className="h-3.5 w-3.5 text-green-600" />
           <span>[ POLYGLOT NOSQL PERSISTENCE ]</span>
-          <span>//</span>
+          <span>{"//"}</span>
           <span className="text-green-700 font-bold">{platform.mongoLabel} Document Collections</span>
         </div>
         <h1 className="text-3xl font-heading font-bold text-ink-black">

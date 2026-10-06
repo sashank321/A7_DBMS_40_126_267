@@ -116,7 +116,7 @@ export default function DocumentsPage() {
         <div>
           <div className="flex items-center gap-2 font-space text-[10px] text-muted tracking-widest uppercase mb-1">
             <span>[ 3NF RELATIONAL STORE ]</span>
-            <span>//</span>
+            <span>{"//"}</span>
             <span className="text-accent-orange font-bold">{platform.pgLabel} Document Catalog</span>
           </div>
           <h1 className="text-3xl font-heading font-bold text-ink-black">

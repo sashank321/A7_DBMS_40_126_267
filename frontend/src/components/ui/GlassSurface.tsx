@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useId } from "react";
+import React, { useEffect, useState, useRef, useId, useCallback } from "react";
 import "./GlassSurface.css";
 
 export interface GlassSurfaceProps {
@@ -83,7 +83,7 @@ export default function GlassSurface({
     }
   }, [reactId]);
 
-  const generateDisplacementMap = () => {
+  const generateDisplacementMap = useCallback(() => {
     if (typeof window === "undefined") return "";
     const rect = containerRef.current?.getBoundingClientRect();
     const actualWidth = rect?.width || 400;
@@ -110,14 +110,14 @@ export default function GlassSurface({
     `;
 
     return `data:image/svg+xml,${encodeURIComponent(svgContent)}`;
-  };
+  }, [borderWidth, redGradId, blueGradId, borderRadius, mixBlendMode, brightness, opacity, blur]);
 
-  const updateDisplacementMap = () => {
+  const updateDisplacementMap = useCallback(() => {
     if (!isMounted) return;
     try {
       feImageRef.current?.setAttribute("href", generateDisplacementMap());
     } catch {}
-  };
+  }, [isMounted, generateDisplacementMap]);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -152,6 +152,7 @@ export default function GlassSurface({
     xChannel,
     yChannel,
     mixBlendMode,
+    updateDisplacementMap,
   ]);
 
   useEffect(() => {
@@ -166,7 +167,7 @@ export default function GlassSurface({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [isMounted]);
+  }, [isMounted, updateDisplacementMap]);
 
   const containerStyle: React.CSSProperties = {
     ...style,
