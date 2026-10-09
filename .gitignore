@@ -73,7 +73,10 @@ dbms project/
 
 
 
-# Local SQLite experiments
+# Local SQLite & Coursework Lab Experiments
 rbac.db
 *.db-journal
 redis_experiment/
+kafka/
+product micro services/
+*.exe

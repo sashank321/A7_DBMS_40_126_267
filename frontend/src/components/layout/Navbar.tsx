@@ -43,26 +43,14 @@ export function Navbar() {
         {roleError && <span role="alert" className="text-xs text-red-700">{roleError}</span>}
         <BackendStatusPill />
 
-        {/* Demo Role Switcher */}
-        {demoAccounts.length > 0 && <div className="hidden sm:flex items-center gap-1 p-1 text-xs font-space border border-ink-black/10 bg-ink-black/5 rounded-md">
-          <span className="px-2 text-[10px] uppercase text-muted tracking-widest flex items-center gap-1">
-            <Shield className="h-3 w-3 text-accent-orange" />
-            Role:
+        {/* Active Role Indicator (Read-Only) */}
+        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-space border border-ink-black/10 bg-ink-black/5 rounded-md">
+          <Shield className="h-3.5 w-3.5 text-accent-orange" />
+          <span className="text-[10px] uppercase text-muted tracking-widest font-bold">Role:</span>
+          <span className="text-[10px] font-mono font-bold uppercase text-ink-black px-1.5 py-0.5 bg-ink-black/10 rounded">
+            {user?.role || "User"}
           </span>
-          {demoAccounts.map(account => ({ key: account.role, label: account.role })).map((item) => (
-            <button
-              key={item.key}
-              onClick={async () => { setRoleError(null); try { await quickLogin(item.key); } catch { setRoleError("Role sign-in failed. Please retry."); } }}
-              className={`px-2.5 py-1 text-[10px] uppercase tracking-wider transition-all rounded ${
-                user?.role === item.key
-                  ? "bg-ink-black text-beige-bg font-bold shadow"
-                  : "text-muted hover:text-ink-black hover:bg-black/5"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>}
+        </div>
 
         {/* User Profile & Logout */}
         {isAuthenticated ? (

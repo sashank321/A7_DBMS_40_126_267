@@ -10,8 +10,7 @@ router = APIRouter(prefix="/health", tags=["Health & System"])
 
 @router.get("")
 def health_check(db: Session = Depends(get_db)):
-    from app.services.embedding_service import embedding_service
-    embeddings = {"provider": settings.EMBEDDING_PROVIDER, "model": getattr(embedding_service.provider, "model_name", getattr(embedding_service.provider, "model", settings.EMBEDDING_MODEL)), "dimensions": embedding_service.dim}
+    embeddings = {"provider": settings.EMBEDDING_PROVIDER, "model": settings.EMBEDDING_MODEL, "dimensions": settings.EMBEDDING_DIM}
     pg = {"status": "UNHEALTHY", "database": settings.POSTGRES_DB, "public_tables": 0, "document_embeddings": 0, "access_matrix_rows": 0}
     try:
         pg["server_version"] = db.execute(text("SHOW server_version")).scalar_one()
