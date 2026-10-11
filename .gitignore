@@ -80,3 +80,4 @@ redis_experiment/
 kafka/
 product micro services/
 *.exe
+*.zip
